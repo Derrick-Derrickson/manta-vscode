@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A chain: net, two-terminal device, net. The shape manta is built around. -->
+  <line x1="1.5" y1="12" x2="7" y2="12"/>
+  <rect x="7" y="8.5" width="10" height="7" rx="1"/>
+  <line x1="17" y1="12" x2="22.5" y2="12"/>
+  <circle cx="1.5" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+  <circle cx="22.5" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+</svg>

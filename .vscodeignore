@@ -1,0 +1,17 @@
+# Sources: the extension ships the compiled JavaScript in out/.
+client/src/**
+server/src/**
+tests/**
+out/tests/**
+**/*.ts
+**/*.map
+
+# Build and repository furniture.
+tsconfig.json
+.gitignore
+.vscodeignore
+.github/**
+node_modules/.bin/**
+node_modules/**/{test,tests,example,examples}/**
+node_modules/**/*.{ts,map}
+node_modules/**/{.eslintrc*,.editorconfig,.travis.yml,tsconfig.json}

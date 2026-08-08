@@ -1,0 +1,23 @@
+rules logic-levels {
+    #VOH : voltage;
+    #VIH : voltage;
+
+    check drive-high for net.driver -> net.receiver {
+        when    driver.direction == out & receiver.direction == in;
+        when    has(driver.VOH) & has(receiver.VIH);
+        require driver.VOH >= receiver.VIH;
+        error   "{driver} drives {net} to {driver.VOH},"
+                " but {receiver} needs at least {receiver.VIH}";
+    };
+};
+
+rules power-budget {
+    #SUPPLY : current;
+    #DRAW   : current;
+
+    check current-budget for net {
+        when    any(pins.SUPPLY);
+        require sum(pins.DRAW where direction == in) <= sum(pins.SUPPLY);
+        warning "net {net} draws {sum(pins.DRAW)}";
+    };
+};

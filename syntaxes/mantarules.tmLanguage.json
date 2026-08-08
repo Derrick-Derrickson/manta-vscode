@@ -1,0 +1,259 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Manta Rules",
+  "scopeName": "source.mantarules",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#ruleset"
+    },
+    {
+      "include": "#check"
+    },
+    {
+      "include": "#clauses"
+    },
+    {
+      "include": "#quantity"
+    },
+    {
+      "include": "#aggregate"
+    },
+    {
+      "include": "#field"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#values"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.manta",
+          "begin": "//",
+          "end": "$"
+        },
+        {
+          "comment": "Spec 2.5: block comments do not nest; the first '*/' closes one.",
+          "name": "comment.block.manta",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.manta",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "comment": "Spec 3.5 supports exactly these four escapes.",
+          "name": "constant.character.escape.manta",
+          "match": "\\\\[\"\\\\nt]"
+        },
+        {
+          "name": "invalid.illegal.unknown-escape.manta",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "values": {
+      "patterns": [
+        {
+          "comment": "Spec 3.2: a dimensioned value, in either spelling of a fractional part. '4k7R' and '4.7kR' are the same quantity.",
+          "name": "constant.numeric.dimensioned.manta",
+          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:[pnumkMGT][0-9]+)?(?:\\.[0-9]+)?[pnumkMGT]?(?:Hz|R|F|H|V|A|W|m|s|C)D?(?![A-Za-z0-9_\\-])"
+        },
+        {
+          "comment": "A unit whose suffix stands in for the decimal point: '3V3', '1R5'.",
+          "name": "constant.numeric.dimensioned.manta",
+          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:Hz|R|F|H|V|A|W|m|s|C)[0-9]+D?(?![A-Za-z0-9_\\-])"
+        },
+        {
+          "name": "constant.numeric.tolerance.manta",
+          "match": "(?:\u00b1|\\+-)\\s*[0-9]+(?:\\.[0-9]+)?%"
+        },
+        {
+          "comment": "Spec 3.4: manta is metric only, so an imperial literal is an error rather than a value.",
+          "name": "invalid.illegal.imperial-unit.manta",
+          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:\\.[0-9]+)?(?:mils?|thou|inch(?:es)?|in|ft|feet|foot|miles?|oz|lb)(?![A-Za-z0-9_\\-])"
+        },
+        {
+          "name": "constant.numeric.manta",
+          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:\\.[0-9]+)?(?![A-Za-z0-9_\\-])"
+        },
+        {
+          "name": "constant.language.boolean.manta",
+          "match": "\\b(TRUE|FALSE|true|false)\\b"
+        },
+        {
+          "comment": "Spec 2.3: an identifier shall not end in '-'.",
+          "name": "invalid.illegal.trailing-hyphen.manta",
+          "match": "\\b[A-Za-z0-9_][A-Za-z0-9_\\-]*-(?![A-Za-z0-9_])"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.definition.replication.manta",
+          "match": "\\[\\[|\\]\\]"
+        },
+        {
+          "name": "punctuation.terminator.statement.manta",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.binding.manta",
+          "match": ":"
+        },
+        {
+          "name": "punctuation.separator.comma.manta",
+          "match": ","
+        },
+        {
+          "name": "keyword.operator.unassigned.manta",
+          "match": "\\?"
+        },
+        {
+          "name": "keyword.operator.percopy.manta",
+          "match": "%"
+        },
+        {
+          "name": "punctuation.section.braces.manta",
+          "match": "[{}]"
+        },
+        {
+          "name": "punctuation.section.brackets.manta",
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "punctuation.section.parens.manta",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.accessor.manta",
+          "match": "\\."
+        }
+      ]
+    },
+    "field": {
+      "comment": "In a rules file a '#' declaration is a type assertion, not a registration: the field was already legal manta.",
+      "match": "(#)([A-Za-z0-9_][A-Za-z0-9_\\-]*)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.field.mantarules"
+        },
+        "2": {
+          "name": "variable.other.field.mantarules"
+        }
+      }
+    },
+    "ruleset": {
+      "match": "\\b(rules)\\b\\s+([A-Za-z0-9_][A-Za-z0-9_\\-]*)?",
+      "captures": {
+        "1": {
+          "name": "keyword.declaration.rules.mantarules"
+        },
+        "2": {
+          "name": "entity.name.type.ruleset.mantarules"
+        }
+      }
+    },
+    "check": {
+      "comment": "A check's name is its diagnostic code, which is why it reads as an entity rather than a label.",
+      "match": "\\b(check)\\b\\s+([A-Za-z0-9_][A-Za-z0-9_\\-]*)?\\s*\\b(for)?\\b",
+      "captures": {
+        "1": {
+          "name": "keyword.declaration.check.mantarules"
+        },
+        "2": {
+          "name": "entity.name.function.check.mantarules"
+        },
+        "3": {
+          "name": "keyword.control.for.mantarules"
+        }
+      }
+    },
+    "clauses": {
+      "patterns": [
+        {
+          "match": "\\b(when|require)\\b",
+          "name": "keyword.control.clause.mantarules"
+        },
+        {
+          "match": "\\b(error|warning)\\b",
+          "name": "keyword.control.severity.mantarules"
+        },
+        {
+          "match": "\\b(where)\\b",
+          "name": "keyword.control.filter.mantarules"
+        },
+        {
+          "match": "\\b(part|net|component)\\b",
+          "name": "support.type.domain.mantarules"
+        },
+        {
+          "match": "\\b(pins)\\b",
+          "name": "support.variable.mantarules"
+        },
+        {
+          "match": "\\b(direction|type|name|physical|designator|footprint|fitted|bom|ground|global)\\b",
+          "name": "support.variable.property.mantarules"
+        },
+        {
+          "match": "\\b(in|out|bidir|none|power|signal|opendrain|nc|passive)\\b",
+          "name": "constant.language.mantarules"
+        }
+      ]
+    },
+    "quantity": {
+      "match": "(?<=:)\\s*\\b(voltage|current|resistance|capacitance|inductance|power|frequency|time|length|temperature|number|boolean|text)\\b",
+      "captures": {
+        "1": {
+          "name": "support.type.quantity.mantarules"
+        }
+      }
+    },
+    "aggregate": {
+      "match": "\\b(sum|min|max|count|any|all|has)\\b(?=\\s*\\()",
+      "name": "support.function.aggregate.mantarules"
+    },
+    "operators": {
+      "patterns": [
+        {
+          "match": "->",
+          "name": "keyword.operator.pair.mantarules"
+        },
+        {
+          "match": "<=|>=|==|!=|[<>]",
+          "name": "keyword.operator.comparison.mantarules"
+        },
+        {
+          "match": "[&|!]",
+          "name": "keyword.operator.logical.mantarules"
+        },
+        {
+          "match": "[+\\-*/]",
+          "name": "keyword.operator.arithmetic.mantarules"
+        },
+        {
+          "match": ":",
+          "name": "punctuation.separator.type.mantarules"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+Manta for VS Code — Evaluation Licence
+Copyright (c) 2026 Tom. All rights reserved.
+
+Permission is granted to the individual or organisation to whom this copy was
+supplied to install and use the Manta VS Code extension for evaluation and
+internal purposes.
+
+You may NOT:
+
+  - redistribute, publish, sublicense or otherwise transfer this software, or
+    any part of it, to a third party;
+  - reverse engineer, decompile or disassemble it, except to the extent that
+    applicable law expressly permits notwithstanding this limitation;
+  - remove or alter this notice.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This is not an open source licence. The Open Source Definition requires that a
+licence permit redistribution and that source be available, and this licence
+does neither.
+
+The author intends to release this software under the GNU General Public
+Licence, version 3, at a later date. This licence governs only the copy
+supplied with it, and nothing here limits what the author may release under
+other terms in future.

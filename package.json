@@ -1,0 +1,180 @@
+{
+  "name": "manta-vscode",
+  "displayName": "Manta",
+  "description": "Language support for the Manta Schematic Definition Language: syntax highlighting, a parts browser, and hover documentation.",
+  "version": "0.1.0",
+  "license": "SEE LICENSE IN LICENSE",
+  "publisher": "manta",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "manta",
+    "schematic",
+    "eda",
+    "pcb",
+    "netlist"
+  ],
+  "main": "./out/client/src/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/*.manta"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "manta",
+        "aliases": [
+          "Manta",
+          "manta"
+        ],
+        "extensions": [
+          ".manta"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "mantarules",
+        "aliases": [
+          "Manta Rules"
+        ],
+        "extensions": [
+          ".mantaRules"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "json",
+        "extensions": [
+          ".mantaO",
+          ".mantaNets"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "manta",
+        "scopeName": "source.manta",
+        "path": "./syntaxes/manta.tmLanguage.json"
+      },
+      {
+        "language": "mantarules",
+        "scopeName": "source.mantarules",
+        "path": "./syntaxes/mantarules.tmLanguage.json"
+      }
+    ],
+    "views": {
+      "manta": [
+        {
+          "id": "mantaParts",
+          "name": "Parts",
+          "icon": "$(circuit-board)",
+          "contextualTitle": "Manta Parts"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "manta",
+          "title": "Manta",
+          "icon": "images/manta.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "manta.refreshParts",
+        "title": "Manta: Refresh Parts",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "manta.groupPartsBy",
+        "title": "Manta: Group Parts By…",
+        "icon": "$(list-tree)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "manta.refreshParts",
+          "when": "view == mantaParts",
+          "group": "navigation@1"
+        },
+        {
+          "command": "manta.groupPartsBy",
+          "when": "view == mantaParts",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Manta",
+      "properties": {
+        "manta.index.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/build/**",
+            "**/.git/**"
+          ],
+          "markdownDescription": "Glob patterns excluded when indexing `.manta` files."
+        },
+        "manta.parts.groupBy": {
+          "type": "string",
+          "enum": [
+            "kind",
+            "file",
+            "flat"
+          ],
+          "enumDescriptions": [
+            "Group by declaration kind: parts, blocks, harnesses, net classes, match groups.",
+            "Group by the file each declaration is written in.",
+            "One flat, sorted list."
+          ],
+          "default": "kind",
+          "description": "How the Parts view arranges declarations."
+        },
+        "manta.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace the communication between VS Code and the manta language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -p ./ -w",
+    "test": "npm run compile && node --test \"out/tests/**/*.test.js\"",
+    "package": "npm run compile && vsce package --out manta-vscode.vsix",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.4.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.0.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Derrick-Derrickson/manta-vscode.git"
+  }
+}

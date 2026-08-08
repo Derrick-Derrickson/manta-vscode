@@ -43,7 +43,7 @@ const KIND_ICON: Record<DeclKind, string> = {
 };
 
 /** A group header, or a declaration. */
-type Node = { type: 'group'; label: string; children: PartsEntry[] } | { type: 'entry'; entry: PartsEntry };
+export type Node = { type: 'group'; label: string; children: PartsEntry[] } | { type: 'entry'; entry: PartsEntry };
 
 export class PartsProvider implements vscode.TreeDataProvider<Node> {
     private readonly changed = new vscode.EventEmitter<Node | undefined>();

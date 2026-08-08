@@ -92,7 +92,7 @@
       },
       {
         "command": "manta.groupPartsBy",
-        "title": "Manta: Group Parts By…",
+        "title": "Manta: Group Parts By\u2026",
         "icon": "$(list-tree)"
       }
     ],
@@ -156,14 +156,20 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -p ./ -w",
-    "test": "npm run compile && node --test \"out/tests/**/*.test.js\"",
+    "test": "npm run compile && node --test \"out/tests/*.test.js\"",
     "package": "npm run compile && vsce package --out manta-vscode.vsix",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "test:integration": "npm run compile && xvfb-run -a node out/tests/integration/runner.js",
+    "test:all": "npm test && npm run test:integration"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
+    "glob": "^13.0.6",
+    "mocha": "^11.8.0",
     "typescript": "^5.4.0",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.0.0"

@@ -73,7 +73,8 @@ VS Code 1.85 or newer. No other dependencies, and no manta toolchain.
 client/src/     the VS Code side: starts the server, owns the tree view
 server/src/     everything that understands manta
 syntaxes/       the two TextMate grammars
-tests/          unit tests, and grammar tests that run the real TextMate engine
+tests/          unit, grammar and language-server tests
+tests/integration/  the suite that runs inside a real VS Code
 ```
 
 Almost nothing lives in the client. The lexer, the scanner, the index and the
@@ -102,8 +103,9 @@ compiler's job, and this extension does not attempt it.
 ```sh
 npm install
 npm run compile
-npm test          # 78 tests
-npm run package   # produces manta-vscode.vsix
+npm test              # 78 tests, no editor required
+npm run test:integration   # 18 more, inside a real VS Code
+npm run package       # produces manta-vscode.vsix
 ```
 
 Install the result with `code --install-extension manta-vscode.vsix`, or from
@@ -122,9 +124,17 @@ talks LSP to it over stdio. That is what catches the wiring — a capability nev
 advertised, a handler under the wrong name, a request whose parameters do not
 survive the round trip — none of which a unit test can see.
 
-What none of it covers is anything only a running editor can show: the tree
-view's appearance, hover placement, and how a particular theme renders these
-scopes. Those need a real VS Code.
+### Testing inside a real editor
+
+`npm run test:integration` launches VS Code itself, opens a workspace of `.manta`
+files and drives the extension through the public API: activation, the Parts
+tree, hovers and definitions through the editor's own provider pipeline, and an
+edit that has to reach the index. It reuses a system VS Code if one is
+installed and downloads a build otherwise, and runs headless under `xvfb-run` on
+a machine with no display.
+
+That leaves only how a particular colour theme paints these scopes, which is a
+matter of taste rather than correctness.
 
 ## Licence
 

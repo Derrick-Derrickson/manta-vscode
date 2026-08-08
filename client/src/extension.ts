@@ -17,7 +17,20 @@ import { PartsProvider } from './parts-view';
 
 let client: LanguageClient | undefined;
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+/**
+ * What `activate` resolves to, and therefore what `extension.exports` is.
+ *
+ * It exists so an integration test running inside a real VS Code can read what
+ * the Parts view actually shows, rather than asserting on a copy of the data
+ * that never went through the tree. Nothing here is a public commitment.
+ */
+export interface MantaApi {
+    readonly parts: PartsProvider;
+    /** Re-reads the workspace and rebuilds the index. */
+    reindex(): Promise<void>;
+}
+
+export async function activate(context: vscode.ExtensionContext): Promise<MantaApi> {
     const serverModule = context.asAbsolutePath(path.join('out', 'server', 'src', 'server.js'));
 
     const serverOptions: ServerOptions = {
@@ -119,6 +132,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     await indexWorkspace();
     await parts.refresh();
+
+    return {
+        parts,
+        reindex: async () => {
+            await indexWorkspace();
+            await parts.refresh();
+        },
+    };
 }
 
 function describeIndex(files: number): string {

@@ -12,7 +12,8 @@ specification is the authority; this extension is only ever a reader of it.
 | `client/src/` | The VS Code side: starts the server, owns the tree view. |
 | `server/src/` | Everything that understands manta. No VS Code imports. |
 | `syntaxes/` | The two TextMate grammars. |
-| `tests/` | Unit tests, and grammar tests driving the real TextMate engine. |
+| `tests/` | Unit, grammar and language-server tests. |
+| `tests/integration/` | The suite that runs inside a real VS Code. |
 
 ## Rules that are not negotiable
 
@@ -63,17 +64,26 @@ These are the cases that have already been got wrong once:
 ## Testing
 
 ```sh
-npm test    # compiles, then runs everything
+npm test                 # compiles, then runs everything that needs no editor
+npm run test:integration # the same extension, inside a real VS Code
+npm run test:all         # both
 ```
+
+The integration suite needs a display. On a headless machine it is already
+wrapped in `xvfb-run`, so `apt install xvfb` is the only prerequisite. It reuses
+a system VS Code when one is installed and downloads a build otherwise.
 
 Grammar changes must come with grammar tests. They load the shipped
 `.tmLanguage.json` into `vscode-textmate` over `vscode-oniguruma` — VS Code's
 own engine — and assert scopes over manta samples. A change that "looks right"
 without one is not verified.
 
-What no test here can cover: the tree view's appearance, hover placement, and
-theme rendering. Those need a running VS Code, and should be called out as
-unverified rather than claimed.
+`activate` returns a `MantaApi` so the integration suite can read what the Parts
+view is actually showing rather than a copy of the data that never went through
+the tree. It is a test seam, not a public commitment; do not grow it into one.
+
+What no test here can cover: how a particular colour theme paints these scopes.
+Call that out as a matter of taste rather than claiming it verified.
 
 ## Adding a language feature
 

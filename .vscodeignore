@@ -15,3 +15,4 @@ node_modules/.bin/**
 node_modules/**/{test,tests,example,examples}/**
 node_modules/**/*.{ts,map}
 node_modules/**/{.eslintrc*,.editorconfig,.travis.yml,tsconfig.json}
+.vscode-test/**

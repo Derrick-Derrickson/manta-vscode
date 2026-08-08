@@ -1,0 +1,21 @@
+// The top-level board, in a second file.
+//
+// It instantiates MCU-48 from parts.manta, which is what makes the
+// cross-file index worth testing: nothing here declares that part.
+
+block board {
+    GND &TYPE=GROUND;
+    3V3>>;
+
+    3V3 == {U2~MCU-48: SDA=I2C-SDA; }. == GND;
+    3V3 == .{R5~R-pullup-4k7}. == I2C-SDA;
+};
+
+static part R-pullup-4k7 {
+    @~footprint = R-0603;
+    #value      = 4k7R;
+    #!type      = resistor;
+
+    1 = A &CASUAL;
+    2 = B &CASUAL;
+};

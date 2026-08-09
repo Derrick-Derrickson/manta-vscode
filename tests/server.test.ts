@@ -135,6 +135,8 @@ test('the parts request returns the workspace index', async () => {
 
     assert.ok(parts.some((p) => p.name === 'top' && p.kind === 'block'));
     assert.ok(parts.some((p) => p.name === 'i2c-bus' && p.kind === 'harness'));
+    // Revision 1.2: a cable is a declaration kind of its own.
+    assert.ok(parts.some((p) => p.name === 'jumper-8way' && p.kind === 'cable'));
 
     // The datasheet below the '---' marker contains "block not-a-block {".
     assert.ok(!parts.some((p) => p.name === 'not-a-block'), 'documentation was indexed as code');
@@ -148,6 +150,26 @@ test('describe renders a card for a part from an unopened file', async () => {
     assert.ok(card, 'no card was returned');
     assert.match(card, /STM32F0QA5/);
     assert.match(card, /52 pins/);
+});
+
+test('a connector card shows what plugs into it', async () => {
+    // '@type' and '@mate' are system fields, so they are not in the '#' set the
+    // summary usually draws on. They are the two facts that matter most about a
+    // connector, which is why they are in it.
+    const card = await client.request<string | null>('manta/describe',
+                                                     { name: 'BACKPLANE-OUT' });
+    assert.ok(card, 'no card for the board connector');
+    assert.match(card, /boardconnector/);
+    assert.match(card, /jumper-8way/);
+});
+
+test('a cable is describable, and is not mistaken for a part', async () => {
+    const card = await client.request<string | null>('manta/describe',
+                                                     { name: 'jumper-8way' });
+    assert.ok(card, 'no card for the cable');
+    assert.match(card, /`cable`/);
+    // A cable declares no pins of its own; the parts inside it do.
+    assert.ok(!/\d+ pins/.test(card), 'a cable was given a pin count');
 });
 
 test('describe returns nothing for a name that is not declared', async () => {

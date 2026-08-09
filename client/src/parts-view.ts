@@ -8,7 +8,7 @@
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
 
-export type DeclKind = 'part' | 'block' | 'harness' | 'netclass' | 'match';
+export type DeclKind = 'part' | 'block' | 'harness' | 'netclass' | 'match' | 'cable';
 
 export interface PartsEntry {
     name: string;
@@ -24,7 +24,7 @@ export interface PartsEntry {
 
 type GroupBy = 'kind' | 'file' | 'flat';
 
-const KIND_ORDER: DeclKind[] = ['part', 'block', 'harness', 'netclass', 'match'];
+const KIND_ORDER: DeclKind[] = ['part', 'block', 'cable', 'harness', 'netclass', 'match'];
 
 const KIND_PLURAL: Record<DeclKind, string> = {
     part: 'Parts',
@@ -32,6 +32,7 @@ const KIND_PLURAL: Record<DeclKind, string> = {
     harness: 'Harnesses',
     netclass: 'Net classes',
     match: 'Match groups',
+    cable: 'Cables',
 };
 
 const KIND_ICON: Record<DeclKind, string> = {
@@ -40,6 +41,7 @@ const KIND_ICON: Record<DeclKind, string> = {
     harness: 'symbol-interface',
     netclass: 'symbol-namespace',
     match: 'symbol-event',
+    cable: 'plug',
 };
 
 /** A group header, or a declaration. */

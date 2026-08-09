@@ -38,6 +38,38 @@ test('finds every kind of declaration', () => {
     assert.ok(names.includes('match:ddr-addr'));
     assert.ok(names.includes('block:rc-filter'));
     assert.ok(names.includes('block:top'));
+    // Revision 1.2.
+    assert.ok(names.includes('cable:jumper-8way'));
+});
+
+test('a cable is a declaration kind of its own', () => {
+    const cable = byName(scan(source).declarations, 'jumper-8way');
+    assert.equal(cable.kind, 'cable');
+    // Its body is a chain, so it declares no pins -- the parts inside it do.
+    assert.equal(cable.pins.length, 0);
+    assert.equal(cable.fields.find((f) => f.name === 'length')!.value, '300mm');
+});
+
+test('the mating fields are read, including a range map', () => {
+    const plug = byName(scan(source).declarations, 'JST-8-PLUG');
+    const field = (name: string) => plug.fields.find((f) => f.name === name);
+
+    assert.equal(field('type')!.value, 'cableconnector');
+    assert.equal(field('type')!.namespace, '@');
+    assert.equal(field('mates')!.value, '[BACKPLANE-OUT, BACKPLANE-IN]');
+    // A descending range is how a reversed ribbon is written; the order of the
+    // endpoints is part of what it means, so it must survive verbatim.
+    assert.equal(field('map')!.value, '[[1:8],[8:1]]');
+
+    const board = byName(scan(source).declarations, 'BACKPLANE-OUT');
+    assert.equal(board.fields.find((f) => f.name === 'mate')!.value, 'jumper-8way');
+    assert.equal(board.fields.find((f) => f.name === 'mate')!.strength, '~');
+});
+
+test('a cable instantiates wires and connectors like any chain', () => {
+    const names = scan(source).instantiations.map((i) => i.name);
+    assert.ok(names.includes('JST-8-PLUG'));
+    assert.ok(names.includes('WIRE-22AWG-RED'));
 });
 
 test('records internal linkage', () => {

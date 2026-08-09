@@ -74,6 +74,40 @@ block top {
     extern U9.1 = GND;
 };
 
+// A connector, and the loom that plugs into it.
+part BACKPLANE-OUT {
+    @type       = boardconnector;
+    @~mate      = jumper-8way;
+    @~footprint = HDR-8;
+
+    [1:8] = Q[1:8]<>;
+};
+
+part JST-8-PLUG {
+    @type  = cableconnector;
+    @mates = [BACKPLANE-OUT, BACKPLANE-IN];
+    @map   = [[1:8],[8:1]];
+
+    [1:8] = P[1:8]<>;
+};
+
+part WIRE-22AWG-RED {
+    @type       = wire;
+    #csa        = 1mm2;
+    #strands    = 7;
+    #colour     = red;
+    #insulation = PVC;
+
+    1 = A &CASUAL;
+    2 = B &CASUAL;
+};
+
+cable jumper-8way {
+    #length = 300mm;
+
+    {J1~JST-8-PLUG}P[1:8] = [[ .{W%[1:8]~WIRE-22AWG-RED}. ]] = P[1:8]{J2~JST-8-PLUG};
+};
+
 ---
 
 # Datasheet

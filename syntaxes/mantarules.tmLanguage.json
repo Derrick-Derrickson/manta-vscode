@@ -74,7 +74,7 @@
         {
           "comment": "Spec 3.2: a dimensioned value, in either spelling of a fractional part. '4k7R' and '4.7kR' are the same quantity.",
           "name": "constant.numeric.dimensioned.manta",
-          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:[pnumkMGT][0-9]+)?(?:\\.[0-9]+)?[pnumkMGT]?(?:Hz|R|F|H|V|A|W|m|s|C)D?(?![A-Za-z0-9_\\-])"
+          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:[pnumkMGT][0-9]+)?(?:\\.[0-9]+)?[pnumkMGT]?(?:Hz|m2|R|F|H|V|A|W|m|s|C)D?(?![A-Za-z0-9_\\-])"
         },
         {
           "comment": "A unit whose suffix stands in for the decimal point: '3V3', '1R5'.",
@@ -220,7 +220,7 @@
       ]
     },
     "quantity": {
-      "match": "(?<=:)\\s*\\b(voltage|current|resistance|capacitance|inductance|power|frequency|time|length|temperature|number|boolean|text)\\b",
+      "match": "(?<=:)\\s*\\b(voltage|current|resistance|capacitance|inductance|power|frequency|time|length|area|temperature|number|boolean|text)\\b",
       "captures": {
         "1": {
           "name": "support.type.quantity.mantarules"

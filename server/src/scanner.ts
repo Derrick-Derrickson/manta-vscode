@@ -9,7 +9,7 @@
 
 import { Token, TokenKind, tokenize } from './lexer';
 
-export type DeclKind = 'part' | 'block' | 'harness' | 'netclass' | 'match';
+export type DeclKind = 'part' | 'block' | 'harness' | 'netclass' | 'match' | 'cable';
 
 export interface Range {
     startLine: number;
@@ -68,7 +68,7 @@ export interface ScanResult {
     instantiations: { name: string; range: Range }[];
 }
 
-const KINDS: DeclKind[] = ['part', 'block', 'harness', 'netclass', 'match'];
+const KINDS: DeclKind[] = ['part', 'block', 'harness', 'netclass', 'match', 'cable'];
 
 class Scanner {
     private pos = 0;

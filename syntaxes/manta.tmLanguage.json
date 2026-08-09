@@ -37,7 +37,7 @@
 
     "declaration": {
       "comment": "The five declaration kinds, and the one linkage keyword.",
-      "match": "\\b(static)?\\s*\\b(block|part|harness|netclass|match)\\b\\s+([A-Za-z0-9_][A-Za-z0-9_\\-]*)?",
+      "match": "\\b(static)?\\s*\\b(block|part|harness|netclass|match|cable)\\b\\s+([A-Za-z0-9_][A-Za-z0-9_\\-]*)?",
       "captures": {
         "1": { "name": "storage.modifier.linkage.manta" },
         "2": { "name": "keyword.declaration.manta" },
@@ -195,12 +195,21 @@
         {
           "comment": "Spec 3.2: a dimensioned value, in either spelling of a fractional part. '4k7R' and '4.7kR' are the same quantity.",
           "name": "constant.numeric.dimensioned.manta",
-          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:[pnumkMGT][0-9]+)?(?:\\.[0-9]+)?[pnumkMGT]?(?:Hz|R|F|H|V|A|W|m|s|C)D?(?![A-Za-z0-9_\\-])"
+          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:[pnumkMGT][0-9]+)?(?:\\.[0-9]+)?[pnumkMGT]?(?:Hz|m2|R|F|H|V|A|W|m|s|C)D?(?![A-Za-z0-9_\\-])"
         },
         {
-          "comment": "A unit whose suffix stands in for the decimal point: '3V3', '1R5'.",
+          "comment": "A unit whose suffix stands in for the decimal point: '3V3', '1R5'. 'm' is excluded, and 'm2' with it: 'm' is the only unit that is also an SI prefix, so '5m5' is read as five milli-something with no unit left and is not a value at all. Spec 3.2 also has a squared unit always write the point.",
           "name": "constant.numeric.dimensioned.manta",
-          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:Hz|R|F|H|V|A|W|m|s|C)[0-9]+D?(?![A-Za-z0-9_\\-])"
+          "match": "(?<![A-Za-z0-9_\\-])-?[0-9]+(?:Hz|R|F|H|V|A|W|s|C)[0-9]+D?(?![A-Za-z0-9_\\-])"
+        },
+        {
+          "comment": "Spec 12A.2: a range inside a value list, which is what keeps a twenty-way pin map to one pair. Only inside brackets -- elsewhere ':' is the binding separator and has nothing to do with values. A range may descend, and that is how a reversed ribbon is written.",
+          "match": "(?<=[\\[,]\\s{0,8})(-?[0-9]+)(:)(-?[0-9]+)(?=\\s{0,8}[\\],])",
+          "captures": {
+            "1": { "name": "constant.numeric.range.manta" },
+            "2": { "name": "punctuation.separator.range.manta" },
+            "3": { "name": "constant.numeric.range.manta" }
+          }
         },
         {
           "name": "constant.numeric.tolerance.manta",

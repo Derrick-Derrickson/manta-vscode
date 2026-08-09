@@ -102,6 +102,22 @@ suite('Manta extension', function () {
         assert.ok(names.includes('board'), `board missing from ${JSON.stringify(names)}`);
         assert.ok(names.includes('R-pullup-4k7'));
         assert.ok(names.includes('i2c-bus'));
+        // Revision 1.2.
+        assert.ok(names.includes('jumper-8way'), `no cable in ${JSON.stringify(names)}`);
+    });
+
+    test('a cable gets its own group in the tree', async () => {
+        await vscode.workspace
+            .getConfiguration('manta')
+            .update('parts.groupBy', 'kind', vscode.ConfigurationTarget.Workspace);
+
+        const groups = api.parts.getChildren().filter((n) => n.type === 'group');
+        const labels = groups.map((g) => (g.type === 'group' ? g.label : ''));
+        assert.ok(labels.some((l) => l.startsWith('Cables')), JSON.stringify(labels));
+
+        const cable = treeEntries().find((e) => e.name === 'jumper-8way');
+        assert.ok(cable);
+        assert.equal(cable.kind, 'cable');
     });
 
     test('documentation below the end-of-content marker is not listed as code', () => {

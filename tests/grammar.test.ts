@@ -170,7 +170,7 @@ test('static reads as a linkage modifier', async () => {
 });
 
 test('every declaration kind is a keyword', async () => {
-    for (const kind of ['block', 'part', 'harness', 'netclass', 'match']) {
+    for (const kind of ['block', 'part', 'harness', 'netclass', 'match', 'cable']) {
         const tokens = await tokenize(`${kind} thing {\n};`);
         assertScope(tokens, kind, 'keyword.declaration.manta');
         assertScope(tokens, 'thing', 'entity.name.type.manta');
@@ -240,6 +240,47 @@ test('a pin type is a language constant', async () => {
 // ---------------------------------------------------------------------------
 // Values
 // ---------------------------------------------------------------------------
+
+test('an area is one token, and its prefix squares with it', async () => {
+    // Longest-first matters: with 'm' tried before 'm2', '1mm2' would colour as
+    // '1mm' followed by a stray digit.
+    for (const value of ['1mm2', '0.5mm2', '2m2', '350000um2']) {
+        const tokens = await tokenize(`part p {\n    #csa = ${value};\n};`);
+        assertScope(tokens, value, 'constant.numeric.dimensioned.manta');
+    }
+    // A length is still a length.
+    const lengths = await tokenize('part p {\n    #len = 5mm;\n};');
+    assertScope(lengths, '5mm', 'constant.numeric.dimensioned.manta');
+});
+
+test("'m' takes no point-substituted spelling, because it is also a prefix", async () => {
+    // 'm' is the only unit that is also an SI prefix, so the compiler reads
+    // '5m5' as five milli-something with no unit left and rejects it. Every
+    // other unit accepts the form: '3V3' is 3.3 volts.
+    for (const notAValue of ['5m5', '1m23']) {
+        const tokens = await tokenize(`part p {\n    #x = ${notAValue};\n};`);
+        assert.ok(
+            !scopesOf(tokens, notAValue).some((sc) => sc.startsWith('constant.numeric')),
+            `${notAValue} was coloured as a value the compiler rejects`,
+        );
+    }
+    const ok = await tokenize('part p {\n    #x = 3V3;\n};');
+    assertScope(ok, '3V3', 'constant.numeric.dimensioned.manta');
+});
+
+test('a range inside a list is a range, not punctuation', async () => {
+    const tokens = await tokenize('part p {\n    @map = [[1:8],[8:1]];\n};');
+    assertScope(tokens, '1', 'constant.numeric.range.manta');
+    assertScope(tokens, '8', 'constant.numeric.range.manta');
+    assertScope(tokens, ':', 'punctuation.separator.range.manta');
+});
+
+test('a colon outside a list is still a binding separator', async () => {
+    // ':' separates a binding list from a device; reading it as a range there
+    // would recolour every call site in the language.
+    const tokens = await tokenize('block b {\n    X = .{U1~P: EN=GND; }. = Y;\n};');
+    assertScope(tokens, ':', 'punctuation.separator.binding.manta');
+});
 
 test('both spellings of a dimensioned value are one numeric token', async () => {
     for (const value of ['4.7kR', '4k7R', '3V3', '100nF', '25mA', '1R5', '5ps', '2V4']) {
@@ -451,6 +492,22 @@ test('the whole sample file behaves: code before the marker, prose after', async
 // The rules grammar
 // ---------------------------------------------------------------------------
 
+test('a cable declaration is highlighted like any other', async () => {
+    const tokens = await tokenize(
+        'cable jumper-8way {\n    {J1~PLUG}P[1:8] = [[ .{W%[1:8]~WIRE}. ]] = P[1:8]{J2~PLUG};\n};',
+    );
+    assertScope(tokens, 'cable', 'keyword.declaration.manta');
+    assertScope(tokens, 'jumper-8way', 'entity.name.type.manta');
+    assertScope(tokens, 'WIRE', 'entity.name.type.instantiated.manta');
+});
+
+test('the whole sample file still has no unscoped token after 1.2', async () => {
+    const tokens = await tokenize(readFileSync(join(FIXTURES, 'parts.manta'), 'utf8'));
+    assertScope(tokens, 'cable', 'keyword.declaration.manta');
+    assertScope(tokens, 'jumper-8way', 'entity.name.type.manta');
+    assertScope(tokens, '1mm2', 'constant.numeric.dimensioned.manta');
+});
+
 test('a rules file highlights its own keywords', async () => {
     const text = readFileSync(join(FIXTURES, 'checks.mantaRules'), 'utf8');
     const tokens = await tokenize(text, 'source.mantarules');
@@ -483,6 +540,16 @@ test('a type assertion marks the field and its quantity', async () => {
     assertScope(tokens, 'VOH', 'variable.other.field.mantarules');
     assertScope(tokens, 'voltage', 'support.type.quantity.mantarules');
     assertScope(tokens, 'current', 'support.type.quantity.mantarules');
+});
+
+test('the rules language knows the area quantity', async () => {
+    const tokens = await tokenize(
+        'rules r {\n    #csa : area;\n\n    check c for part {\n'
+        + '        require part.csa >= 1mm2;\n    };\n};',
+        'source.mantarules',
+    );
+    assertScope(tokens, 'area', 'support.type.quantity.mantarules');
+    assertScope(tokens, '1mm2', 'constant.numeric.dimensioned.manta');
 });
 
 test('a rules message is a string, and its comments are comments', async () => {

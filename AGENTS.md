@@ -22,8 +22,8 @@ the authority on what that revision contains. `docs/spec.md` in the
 [Manta repository](https://github.com/Derrick-Derrickson/Manta) is where a
 construct is defined; §19 is the grammar and §2.6 the reserved words.
 
-Currently written against **revision 1.1**. The README's "Known gaps" lists what
-1.2 added and has not been picked up.
+Currently written against **revision 1.2**: the `cable` declaration, `@type` and
+the mating fields, the area unit `m2`, and range values.
 
 Adding a declaration kind here means three places, none of which the type checker
 will point at:
@@ -36,9 +36,15 @@ will point at:
   plus `KIND_ORDER`, `KIND_PLURAL` and `KIND_ICON` in the latter — the tree
   groups by kind and an unlisted one is dropped from the grouping.
 
-Adding a unit means one: the `values` rule in the grammar. Mind the ordering — a
-longer suffix has to be tried first, or `m2` is read as `m` followed by a digit.
-That is the same trap the compiler's own unit table documents.
+Adding a unit means one: the `values` rule in the grammar. Two traps there, both
+already sprung once:
+
+- **Longest first.** `m2` has to be tried before `m`, or `1mm2` colours as `1mm`
+  and a stray digit. The compiler's own unit table carries the same comment.
+- **The point-substituted form is not for every unit.** `3V3` is 3.3 volts, but
+  `5m5` is nothing at all: `m` is the only unit that is also an SI prefix, so
+  the compiler eats it as milli and finds no unit left. `m` — and `m2` with it —
+  is excluded from that rule deliberately.
 
 ## Rules that are not negotiable
 

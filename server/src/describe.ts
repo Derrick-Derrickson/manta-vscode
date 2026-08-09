@@ -12,10 +12,19 @@ const KIND_LABEL: Record<Declaration['kind'], string> = {
     harness: 'harness',
     netclass: 'net class',
     match: 'match group',
+    cable: 'cable',
 };
 
-/** Fields worth putting in the summary line, in the order they read best. */
-const SUMMARY_FIELDS = ['value', 'type', 'manufacturer', 'mpn', 'tolerance', 'power', 'voltage'];
+/**
+ * Fields worth putting in the summary line, in the order they read best.
+ *
+ * 'type' and 'mate' are '@' fields rather than '#' ones, but the lookup is by
+ * name and not by namespace, so both land here. They earn the place: 'type'
+ * decides whether a part is a connector at all, and 'mate' is the whole of what
+ * plugs into it.
+ */
+const SUMMARY_FIELDS = ['value', 'type', 'mate', 'mates', 'manufacturer', 'mpn',
+                        'tolerance', 'power', 'voltage', 'csa'];
 
 function field(decl: Declaration, name: string, namespace?: '@' | '#'): Field | undefined {
     return decl.fields.find((f) => f.name === name && (!namespace || f.namespace === namespace));

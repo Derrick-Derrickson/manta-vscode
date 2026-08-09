@@ -3,8 +3,7 @@
 Editor support for the [Manta Schematic Definition Language](https://github.com/Derrick-Derrickson/Manta):
 syntax highlighting, a parts browser, and hover documentation.
 
-Written against language revision **1.1**. Revision 1.2 added constructs this
-extension does not yet know about — see [Known gaps](#known-gaps).
+Written against language revision **1.2**.
 
 This extension is independent of the manta compiler. It reads `.manta` files
 directly, so it works on a machine that has no toolchain installed, and it never
@@ -33,12 +32,18 @@ things a generic highlighter would not:
 - `&` names that the compiler does not define are still scoped as directives,
   not painted red. The compiler is the authority on which names exist; the
   editor should not disagree with it.
+- `1mm2` is one quantity, not `1mm` and a stray digit — the unit table is
+  longest-first, as the compiler's is. And `5m5` is *not* coloured as a value:
+  `m` is the only unit that is also an SI prefix, so the compiler reads it as
+  five milli-something with no unit left and rejects it.
+- A range inside a value list — `@map = [[1:20],[20:1]]` — reads as a range,
+  while the `:` that separates a binding list stays a binding separator.
 
 ### Parts browser
 
 A **Manta** container in the activity bar lists every declaration in the
-workspace — parts, blocks, harnesses, net classes and match groups — with its
-value and pin count beside it. Click one to jump to it. Hovering a row gives the
+workspace — parts, blocks, cables, harnesses, net classes and match groups —
+with its value and pin count beside it. Click one to jump to it. Hovering a row gives the
 same card as hovering the name in a file.
 
 Group it by kind, by file, or flat, from the view's toolbar or from
@@ -55,24 +60,11 @@ manufacturer, MPN, tolerance, ratings), the doc comment above the declaration,
 the pin table, where it is declared, and how many times the workspace
 instantiates it.
 
+For a connector that includes `@type` and `@mate` — what it is, and what plugs
+into it. Both are `@` fields, which the summary would otherwise skip.
+
 Go-to-definition, document symbols and workspace symbols work from the same
 index.
-
-## Known gaps
-
-The compiler moved to language revision 1.2; this extension has not. Four things
-are missing, all small and all in one place each:
-
-| Construct | Effect today | Where |
-|---|---|---|
-| `cable` declarations (§12A) | Not highlighted as a declaration, and absent from the Parts view | `KINDS` in `server/src/scanner.ts`; the `declaration` rule in `syntaxes/manta.tmLanguage.json` |
-| The area unit `m2` (§3.2) | `1mm2` highlights as `1mm` followed by a stray `2` | the `values` rule in the grammar |
-| Range values, `[[1:20],[20:1]]` (§12A.2) | Highlighted as punctuation rather than a range | the `values` rule |
-| `@type`, `@mate`, `@mates`, `@map` | Recognised as ordinary system fields, which is correct but they get no special treatment in a hover card | `SUMMARY_FIELDS` in `server/src/describe.ts` |
-
-Nothing here is wrong, only absent: a `.manta` file using them still opens,
-still indexes and still hovers. A `cable` simply does not appear in the tree, and
-`1mm2` is coloured as two tokens rather than one.
 
 ## Requirements
 
@@ -122,8 +114,8 @@ compiler's job, and this extension does not attempt it.
 ```sh
 npm install
 npm run compile
-npm test              # 78 tests, no editor required
-npm run test:integration   # 18 more, inside a real VS Code
+npm test              # 90 tests, no editor required
+npm run test:integration   # 19 more, inside a real VS Code
 npm run package       # produces manta-vscode.vsix
 ```
 

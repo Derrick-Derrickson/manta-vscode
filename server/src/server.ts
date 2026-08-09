@@ -43,6 +43,7 @@ const SYMBOL_KIND: Record<DeclKind, SymbolKind> = {
     harness: SymbolKind.Interface,
     netclass: SymbolKind.Namespace,
     match: SymbolKind.Event,
+    cable: SymbolKind.Struct,
 };
 
 function toLspRange(r: ScanRange) {

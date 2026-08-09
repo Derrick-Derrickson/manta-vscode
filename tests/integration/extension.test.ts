@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The extension, running inside a real VS Code.
 //
 // This is the suite that can see what the others cannot: that the extension

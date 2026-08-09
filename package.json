@@ -3,7 +3,7 @@
   "displayName": "Manta",
   "description": "Language support for the Manta Schematic Definition Language: syntax highlighting, a parts browser, and hover documentation.",
   "version": "0.1.0",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-or-later",
   "publisher": "manta",
   "engines": {
     "vscode": "^1.85.0"

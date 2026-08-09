@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // A tokenizer for manta source.
 //
 // Deliberately not a reimplementation of the compiler's lexer, and it does not

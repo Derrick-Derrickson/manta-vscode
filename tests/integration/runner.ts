@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Downloads (or reuses) a VS Code build, installs this extension into a throw-
 // away profile, and runs the integration suite inside it.
 //

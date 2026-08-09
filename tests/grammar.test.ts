@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Syntax highlighting, checked by running the real thing.
 //
 // These tests drive the same TextMate engine VS Code uses -- vscode-textmate

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The workspace index: every declaration, and where it is.
 //
 // Manta has no file-level scope -- a file is a collection of named declarations

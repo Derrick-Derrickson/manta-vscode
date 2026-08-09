@@ -149,5 +149,10 @@ matter of taste rather than correctness.
 
 ## Licence
 
-Evaluation licence — see [LICENSE](LICENSE). Not open source; the author intends
-to move to GPL-3.0 later.
+Copyright (C) 2026 Tom.
+
+Free software under the GNU General Public License, version 3 or later — see
+[LICENSE](LICENSE). Distributed in the hope that it will be useful, but without
+any warranty.
+
+Everything it bundles is MIT or ISC licensed, all of it GPL-compatible.

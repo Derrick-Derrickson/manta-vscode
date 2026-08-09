@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The Parts view.
 //
 // A tree view is a VS Code idea with no equivalent in the language protocol, so

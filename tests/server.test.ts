@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The language server, end to end.
 //
 // The other tests exercise the scanner, the index and the renderer directly.

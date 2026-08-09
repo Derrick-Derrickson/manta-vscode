@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The scanner and the index, which are what the parts browser and the hover
 // are built on.
 //

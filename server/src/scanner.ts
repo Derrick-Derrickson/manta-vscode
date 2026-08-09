@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Extracting a file's declarations from its tokens.
 //
 // This is an index, not a compiler. It answers "what is declared here, where,

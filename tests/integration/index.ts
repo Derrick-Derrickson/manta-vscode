@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The mocha runner that VS Code's extension host loads.
 //
 // The extension host requires this module and calls run(); everything after

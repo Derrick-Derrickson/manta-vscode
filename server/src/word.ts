@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Finding the identifier under the cursor.
 //
 // Manta identifiers admit '-' inside them, which is what makes a naive word

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The manta language server.
 //
 // It owns the index. The editor asks it for hovers and definitions through the

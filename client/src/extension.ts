@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The extension host side: start the server, feed it the workspace, show the
 // Parts view.
 //

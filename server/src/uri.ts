@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The small amount of URI handling the server needs.
 //
 // Not a URI library: the server only ever needs a readable file name for a

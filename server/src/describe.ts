@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Tom
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Turning a declaration into the Markdown a hover shows.
 //
 // The aim is a card someone can read at a glance without leaving the line they

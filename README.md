@@ -3,6 +3,9 @@
 Editor support for the [Manta Schematic Definition Language](https://github.com/Derrick-Derrickson/Manta):
 syntax highlighting, a parts browser, and hover documentation.
 
+Written against language revision **1.1**. Revision 1.2 added constructs this
+extension does not yet know about — see [Known gaps](#known-gaps).
+
 This extension is independent of the manta compiler. It reads `.manta` files
 directly, so it works on a machine that has no toolchain installed, and it never
 shells out to `manta`.
@@ -54,6 +57,22 @@ instantiates it.
 
 Go-to-definition, document symbols and workspace symbols work from the same
 index.
+
+## Known gaps
+
+The compiler moved to language revision 1.2; this extension has not. Four things
+are missing, all small and all in one place each:
+
+| Construct | Effect today | Where |
+|---|---|---|
+| `cable` declarations (§12A) | Not highlighted as a declaration, and absent from the Parts view | `KINDS` in `server/src/scanner.ts`; the `declaration` rule in `syntaxes/manta.tmLanguage.json` |
+| The area unit `m2` (§3.2) | `1mm2` highlights as `1mm` followed by a stray `2` | the `values` rule in the grammar |
+| Range values, `[[1:20],[20:1]]` (§12A.2) | Highlighted as punctuation rather than a range | the `values` rule |
+| `@type`, `@mate`, `@mates`, `@map` | Recognised as ordinary system fields, which is correct but they get no special treatment in a hover card | `SUMMARY_FIELDS` in `server/src/describe.ts` |
+
+Nothing here is wrong, only absent: a `.manta` file using them still opens,
+still indexes and still hovers. A `cable` simply does not appear in the tree, and
+`1mm2` is coloured as two tokens rather than one.
 
 ## Requirements
 

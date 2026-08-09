@@ -15,6 +15,31 @@ specification is the authority; this extension is only ever a reader of it.
 | `tests/` | Unit, grammar and language-server tests. |
 | `tests/integration/` | The suite that runs inside a real VS Code. |
 
+## The language moves; this must follow
+
+The extension is written against a revision of the language, and the compiler is
+the authority on what that revision contains. `docs/spec.md` in the
+[Manta repository](https://github.com/Derrick-Derrickson/Manta) is where a
+construct is defined; §19 is the grammar and §2.6 the reserved words.
+
+Currently written against **revision 1.1**. The README's "Known gaps" lists what
+1.2 added and has not been picked up.
+
+Adding a declaration kind here means three places, none of which the type checker
+will point at:
+
+- `KINDS` in `server/src/scanner.ts` — otherwise `tryDeclaration` does not
+  recognise it and it never reaches the index or the Parts view.
+- the `declaration` rule in `syntaxes/manta.tmLanguage.json` — otherwise the
+  keyword is not coloured.
+- `DeclKind` in both `server/src/scanner.ts` and `client/src/parts-view.ts`,
+  plus `KIND_ORDER`, `KIND_PLURAL` and `KIND_ICON` in the latter — the tree
+  groups by kind and an unlisted one is dropped from the grouping.
+
+Adding a unit means one: the `values` rule in the grammar. Mind the ordering — a
+longer suffix has to be tried first, or `m2` is read as `m` followed by a digit.
+That is the same trap the compiler's own unit table documents.
+
 ## Rules that are not negotiable
 
 **Nothing in `server/` may import `vscode`.** The server is a language server,

@@ -2,7 +2,7 @@
   "name": "manta-vscode",
   "displayName": "Manta",
   "description": "Language support for the Manta Schematic Definition Language: syntax highlighting, a parts browser, and hover documentation.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "GPL-3.0-or-later",
   "publisher": "manta",
   "engines": {
@@ -157,7 +157,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -p ./ -w",
     "test": "npm run compile && node --test \"out/tests/*.test.js\"",
-    "package": "npm run compile && vsce package --out manta-vscode.vsix",
+    "package": "npm run compile && vsce package --out manta-vscode-0.2.0.vsix",
     "vscode:prepublish": "npm run compile",
     "test:integration": "npm run compile && xvfb-run -a node out/tests/integration/runner.js",
     "test:all": "npm test && npm run test:integration"

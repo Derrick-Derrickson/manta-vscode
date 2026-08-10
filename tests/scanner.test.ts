@@ -211,6 +211,86 @@ test('instantiations are counted, including inside bodies', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Render sections (revision 1.3)
+// ---------------------------------------------------------------------------
+
+test('markers between statements do not confuse the scan', () => {
+    const { declarations, instantiations } = scan(`
+block charger {
+    --- POWER IN
+    {J1~CONN-USB-C: VBUS = VBUS;};
+
+    --- REGULATION
+    VBUS = VIN{U1~LDO-3V3}VOUT = 3V3;
+};
+
+part after { @~footprint = F; 1 = A &CASUAL; };
+`);
+    assert.deepEqual(declarations.map((d) => `${d.kind}:${d.name}`),
+                     ['block:charger', 'part:after']);
+    assert.deepEqual(instantiations.map((i) => i.name), ['CONN-USB-C', 'LDO-3V3']);
+    assert.deepEqual(byName(declarations, 'charger').sections.map((s) => s.title),
+                     ['POWER IN', 'REGULATION']);
+});
+
+test("a title runs to the end of the line, and '//' is not a comment in it", () => {
+    const top = byName(scan(source).declarations, 'top');
+    assert.deepEqual(top.sections.map((s) => s.title), [
+        'POWER TREE',
+        'ANALOG I/O // not a comment: a render section title runs to end of line',
+    ]);
+});
+
+test('a nested block keeps its markers to itself', () => {
+    const { declarations } = scan(`
+block outer {
+    --- OUTER ONLY
+    A == B;
+    block inner {
+        --- INNER ONLY
+        C == D;
+    };
+};
+`);
+    const outer = byName(declarations, 'outer');
+    assert.deepEqual(outer.sections.map((s) => s.title), ['OUTER ONLY']);
+    assert.deepEqual(byName(declarations, 'inner').sections.map((s) => s.title), ['INNER ONLY']);
+});
+
+test('a marker in a part body is stepped over, not recorded', () => {
+    // Spec 4.7: only a block body may carry a marker; anywhere else it is the
+    // compiler's error to report. The index must neither trip on it nor
+    // pretend the part has sections.
+    const { declarations } = scan(`
+part misplaced {
+    @~footprint = F;
+    --- NOT LEGAL HERE
+    1 = A &CASUAL;
+    2 = B &CASUAL;
+};
+`);
+    const part = byName(declarations, 'misplaced');
+    assert.deepEqual(part.sections, []);
+    assert.equal(part.pins.length, 2, 'a marker between pin lines broke the pin scan');
+});
+
+test('a bare marker inside a block does not end the content', () => {
+    // A bare '---' at the top level ends the file (spec 2.8); inside a block it
+    // is an error with no title, and either way the declarations around it must
+    // survive the scan.
+    const { declarations } = scan(`
+block broken {
+    ---
+    A == B;
+};
+part survivor { @~footprint = F; 1 = A &CASUAL; };
+`);
+    const names = declarations.map((d) => d.name);
+    assert.deepEqual(names, ['broken', 'survivor']);
+    assert.deepEqual(byName(declarations, 'broken').sections, []);
+});
+
+// ---------------------------------------------------------------------------
 // The index
 // ---------------------------------------------------------------------------
 

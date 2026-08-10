@@ -4,6 +4,7 @@
   "scopeName": "source.manta",
   "patterns": [
     { "include": "#end-of-content" },
+    { "include": "#section-marker" },
     { "include": "#comments" },
     { "include": "#declaration" },
     { "include": "#body" }
@@ -17,6 +18,15 @@
       },
       "end": "\\z",
       "contentName": "comment.block.documentation.manta"
+    },
+
+    "section-marker": {
+      "comment": "Spec 4.7: a line-first '---' with a title names a render section inside a block body. The title is free text to the end of the line and '//' is not special in it, so the rule sits before the comment rules and takes the whole line. A grammar cannot see brace depth, so the marker reads as a heading wherever it is written; the bare '---' of 2.8 never matches here because this rule requires a title, and the end-of-content rule is tried first.",
+      "match": "^\\s*(---)[ \\t]+(\\S.*?)[ \\t]*$",
+      "captures": {
+        "1": { "name": "punctuation.definition.heading.manta" },
+        "2": { "name": "markup.heading.manta entity.name.section.manta" }
+      }
     },
 
     "comments": {

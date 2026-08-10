@@ -234,6 +234,28 @@ test('document symbols cover every declaration in the file', async () => {
     }
 });
 
+test("a block's render sections appear in its outline", async () => {
+    // Revision 1.3: a '--- TITLE' line captions the statements after it, and
+    // the outline shows the captions nested under the block.
+    interface Symbol {
+        name: string;
+        children?: Symbol[];
+    }
+    const symbols = await client.request<Symbol[]>('textDocument/documentSymbol', {
+        textDocument: { uri: FIXTURE_URI },
+    });
+
+    const top = symbols.find((s) => s.name === 'top');
+    assert.ok(top, 'block top lost its outline entry');
+    const children = (top.children ?? []).map((c) => c.name);
+    assert.ok(children.includes('POWER TREE'), JSON.stringify(children));
+
+    // A part carries no sections, whatever is written in its body.
+    const mcu = symbols.find((s) => s.name === 'MCU-48');
+    assert.ok(mcu);
+    assert.equal((mcu.children ?? []).length, 0);
+});
+
 test('workspace symbols answer a partial name', async () => {
     const symbols = await client.request<{ name: string }[]>('workspace/symbol', { query: 'MCU' });
     assert.ok(symbols.some((s) => s.name === 'MCU-48'));

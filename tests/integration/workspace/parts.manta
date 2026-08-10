@@ -55,6 +55,7 @@ block top {
     GND &TYPE=GROUND;
     3V3>>;
 
+    --- POWER TREE
     SW == SW-NODE
         = (.{L?~MT100UFA}.)+2
         = (A{D?~DI3643}K)|2
@@ -64,6 +65,7 @@ block top {
         = PWR-SWITCHED
         &CURRENT=3A &!VOLTAGE=6V &~LAYER=inner1;
 
+    --- ANALOG I/O // not a comment: a render section title runs to end of line
     >SIG[0:3] = [[ I{U?~AMP012: EN=%AMP-EN[0:3]; }O ]] = OUT[0:3]>;
     >A[0:3] = [[.{R?~100kR-0603}.]] =* COMBINED>;
     VREF *= BIAS[0:7];
@@ -114,3 +116,4 @@ cable jumper-8way {
 
 This text is not manta and must not be highlighted as though it were:
 block not-a-block { ; ; ; } &&& @@@ ###
+--- NOT-A-SECTION either, because the content already ended above

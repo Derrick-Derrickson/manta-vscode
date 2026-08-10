@@ -48,6 +48,13 @@ export interface Pin {
     range: Range;
 }
 
+export interface Section {
+    /** The title, as written: everything after the '---' to the end of line. */
+    title: string;
+    /** The marker line, '---' through the end of the title. */
+    range: Range;
+}
+
 export interface Declaration {
     kind: DeclKind;
     name: string;
@@ -62,6 +69,8 @@ export interface Declaration {
     doc: string;
     /** Nested declarations, since a block body may contain items. */
     children: Declaration[];
+    /** Render section markers (spec 4.7), which only a block body may carry. */
+    sections: Section[];
 }
 
 export interface ScanResult {
@@ -105,6 +114,11 @@ class Scanner {
      */
     private atComment(): boolean {
         return this.cur.kind === TokenKind.Comment;
+    }
+
+    /** A method for the same narrowing reason as atComment. */
+    private atSectionMarker(): boolean {
+        return this.cur.kind === TokenKind.SectionMarker;
     }
 
     private rangeOf(from: Token, to: Token): Range {
@@ -230,6 +244,7 @@ class Scanner {
             pins: [],
             doc: cleanDoc(doc),
             children: [],
+            sections: [],
         };
 
         this.advance(); // '{'
@@ -247,6 +262,21 @@ class Scanner {
         while (!this.atEnd() && depth > 0) {
             if (this.atComment()) {
                 pendingDoc.push(this.advance().text);
+                continue;
+            }
+
+            // A render section marker (spec 4.7). Whole-line, so it can never
+            // be half a statement; recorded for a block, whose body is the one
+            // place the language allows it, and stepped over anywhere else --
+            // the compiler owns the error, the index just must not trip on it.
+            if (this.atSectionMarker()) {
+                const marker = this.advance();
+                const title = marker.text.slice(3).trim();
+                if (depth === 1 && decl.kind === 'block' && title) {
+                    decl.sections.push({ title, range: this.rangeOf(marker, marker) });
+                }
+                last = marker;
+                pendingDoc = [];
                 continue;
             }
 

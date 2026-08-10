@@ -297,6 +297,27 @@ suite('Manta extension', function () {
         assert.ok(!names.includes('not-a-block'));
     });
 
+    test('a render section is outlined under its block', async () => {
+        // Revision 1.3: '--- POWER TREE' captions part of block top, and the
+        // caption must survive the whole trip: scanner, server, LSP client and
+        // the editor's own symbol pipeline.
+        const document = await vscode.workspace.openTextDocument(uriFor('parts.manta'));
+        const symbols = await eventually('document symbols', async () =>
+            firstNonEmpty(
+                await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+                    'vscode.executeDocumentSymbolProvider',
+                    document.uri,
+                ),
+            ),
+        );
+
+        const top = symbols.find((s) => s.name === 'top');
+        assert.ok(top, 'block top lost its outline entry');
+        const section = top.children.find((c) => c.name === 'POWER TREE');
+        assert.ok(section, JSON.stringify(top.children.map((c) => c.name)));
+        assert.equal(section.kind, vscode.SymbolKind.String);
+    });
+
     test('workspace symbols answer a partial name', async () => {
         const symbols = await eventually('workspace symbols', async () =>
             firstNonEmpty(

@@ -7,7 +7,10 @@ block board {
     GND &TYPE=GROUND;
     3V3>>;
 
+    --- PROCESSOR
     3V3 == {U2~MCU-48: SDA=I2C-SDA; }. == GND;
+
+    --- I2C PULL-UP
     3V3 == .{R5~R-pullup-4k7}. == I2C-SDA;
 };
 

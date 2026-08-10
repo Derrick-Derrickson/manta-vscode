@@ -3,7 +3,7 @@
 Editor support for the [Manta Schematic Definition Language](https://github.com/Derrick-Derrickson/Manta):
 syntax highlighting, a parts browser, and hover documentation.
 
-Written against language revision **1.2**.
+Written against language revision **1.3**.
 
 This extension is independent of the manta compiler. It reads `.manta` files
 directly, so it works on a machine that has no toolchain installed, and it never
@@ -38,6 +38,11 @@ things a generic highlighter would not:
   five milli-something with no unit left and rejects it.
 - A range inside a value list — `@map = [[1:20],[20:1]]` — reads as a range,
   while the `:` that separates a binding list stays a binding separator.
+- A render section marker (§4.7) — a line-first `--- USB-C POWER IN` inside a
+  block body — reads as a heading, title and all. The title is free text to the
+  end of the line, so a `//` inside it is title rather than comment. A bare
+  `---` at the top level is still the end-of-content marker, and everything
+  after it stays uncoloured.
 
 ### Parts browser
 
@@ -64,7 +69,9 @@ For a connector that includes `@type` and `@mate` — what it is, and what plugs
 into it. Both are `@` fields, which the summary would otherwise skip.
 
 Go-to-definition, document symbols and workspace symbols work from the same
-index.
+index. A block's render sections (`--- TITLE` lines, §4.7) appear in the
+outline as captions nested under it, so a long board file navigates by the
+same headings `manta render` draws.
 
 ## Requirements
 
@@ -114,13 +121,13 @@ compiler's job, and this extension does not attempt it.
 ```sh
 npm install
 npm run compile
-npm test              # 90 tests, no editor required
-npm run test:integration   # 19 more, inside a real VS Code
-npm run package       # produces manta-vscode.vsix
+npm test              # 100 tests, no editor required
+npm run test:integration   # 20 more, inside a real VS Code
+npm run package       # produces manta-vscode-0.3.0.vsix
 ```
 
-Install the result with `code --install-extension manta-vscode.vsix`, or from
-the Extensions view's **Install from VSIX…** menu.
+Install the result with `code --install-extension manta-vscode-0.3.0.vsix`, or
+from the Extensions view's **Install from VSIX…** menu.
 
 ### Testing the highlighting
 

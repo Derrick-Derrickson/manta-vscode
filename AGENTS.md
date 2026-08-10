@@ -22,8 +22,11 @@ the authority on what that revision contains. `docs/spec.md` in the
 [Manta repository](https://github.com/Derrick-Derrickson/Manta) is where a
 construct is defined; §19 is the grammar and §2.6 the reserved words.
 
-Currently written against **revision 1.2**: the `cable` declaration, `@type` and
-the mating fields, the area unit `m2`, and range values.
+Currently written against **revision 1.3**: everything 1.2 brought (the `cable`
+declaration, `@type` and the mating fields, the area unit `m2`, range values)
+plus the render section marker of §4.7 — a line-first `--- TITLE` inside a
+block body, which the grammar paints as a heading, the lexer carries as one
+whole-line token, and the outline shows as a caption under its block.
 
 Adding a declaration kind here means three places, none of which the type checker
 will point at:
@@ -73,6 +76,14 @@ These are the cases that have already been got wrong once:
   ends the manta content of a file; everything after is a datasheet. Any code
   that walks a file must stop there. The scanner's `TokenKind.EndOfContent` and
   the grammar's `end-of-content` rule both exist for this.
+- **`---` is two things.** The same three characters end the content at the top
+  level and title a render section inside a block body (§4.7, revision 1.3).
+  The lexer tells them apart by brace depth, and lexes a marker line as one
+  whole-line `TokenKind.SectionMarker` — the title is free text, so tokenizing
+  it normally would read a `//` inside it as a comment. The TextMate grammar
+  cannot see brace depth; it settles for "bare `---` at column zero is
+  end-of-content, `---` plus a title is a heading", which is right everywhere
+  legal manta can put them.
 - **The digit-run rule for `.`.** A `.` joins the current word only while a
   number is being built, so `4.7kR` and `0.2-1.2` stay whole but `U1.GPIO1`
   splits at the dot. Both behaviours are load-bearing.

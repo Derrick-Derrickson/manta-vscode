@@ -440,6 +440,61 @@ test('a substitution reads as arithmetic, not as manta', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Render section markers (revision 1.3)
+// ---------------------------------------------------------------------------
+
+test('a section marker reads as a heading, indentation and all', async () => {
+    const tokens = await tokenize('block b {\n    --- USB-C POWER IN\n    A == B;\n};');
+    assertScope(tokens, '---', 'punctuation.definition.heading.manta');
+    assertScope(tokens, 'USB-C POWER IN', 'markup.heading.manta');
+    assertScope(tokens, 'USB-C POWER IN', 'entity.name.section.manta');
+    // The code after the marker is still code.
+    assertScope(tokens, '==', 'keyword.operator.same-net.manta');
+});
+
+test("'//' in a section title is title, not a comment", async () => {
+    // Spec 4.7: the title is free text to the end of the line.
+    const tokens = await tokenize('block b {\n    --- I/O // left side\n};');
+    assertScope(tokens, 'I/O // left side', 'markup.heading.manta');
+    assert.ok(
+        !tokens.some((t) => t.line === 1 && t.scopes.some((s) => s.startsWith('comment.'))),
+        'part of a section title was highlighted as a comment',
+    );
+});
+
+test('a section marker does not usurp the end-of-content marker', async () => {
+    const tokens = await tokenize(
+        ['block b {', '    --- A SECTION', '};', '---', '--- looks like a section', 'prose'].join('\n'),
+    );
+
+    assertScope(tokens, 'A SECTION', 'entity.name.section.manta');
+    assertScope(tokens, '---', 'keyword.control.end-of-content.manta');
+
+    // The titled '---' in the tail is documentation like everything else there,
+    // not a heading.
+    const tail = tokens.filter((t) => t.line > 3);
+    assert.ok(tail.length > 0, 'the documentation produced no tokens at all');
+    for (const token of tail) {
+        assert.ok(
+            token.scopes.includes('comment.block.documentation.manta'),
+            `line ${token.line}: ${JSON.stringify(token.text)} escaped the documentation scope`,
+        );
+        assert.ok(
+            !token.scopes.some((s) => s.startsWith('markup.heading')),
+            `line ${token.line}: ${JSON.stringify(token.text)} was highlighted as a heading`,
+        );
+    }
+});
+
+test("a '---' that is not first on its line is not a heading", async () => {
+    const tokens = await tokenize('part p {\n    #note = --- ;\n};');
+    assert.ok(
+        !tokens.some((t) => t.scopes.some((s) => s.startsWith('markup.heading'))),
+        "a '---' mid-line was highlighted as a section heading",
+    );
+});
+
+// ---------------------------------------------------------------------------
 // The end-of-content marker
 // ---------------------------------------------------------------------------
 

@@ -213,13 +213,29 @@ connection.onDefinition((params): Location | null => {
 // ---------------------------------------------------------------------------
 
 function toDocumentSymbol(decl: Declaration): DocumentSymbol {
+    // A render section (spec 4.7) is purely presentational, but it is also how
+    // the author chose to caption the block, so the outline shows the captions
+    // under it. The symbol spans only the marker line: sections do not own the
+    // statements after them the way a declaration owns its body, and a symbol
+    // that pretended otherwise would fight the declaration ranges around it.
+    const sections: DocumentSymbol[] = decl.sections.map((section) => ({
+        name: section.title,
+        kind: SymbolKind.String,
+        range: toLspRange(section.range),
+        selectionRange: toLspRange(section.range),
+    }));
+
     return {
         name: decl.name,
         detail: summarise(decl),
         kind: SYMBOL_KIND[decl.kind],
         range: toLspRange(decl.range),
         selectionRange: toLspRange(decl.selectionRange),
-        children: decl.children.map(toDocumentSymbol),
+        children: [...decl.children.map(toDocumentSymbol), ...sections].sort(
+            (a, b) =>
+                a.range.start.line - b.range.start.line ||
+                a.range.start.character - b.range.start.character,
+        ),
     };
 }
 

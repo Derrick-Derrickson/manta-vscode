@@ -17,6 +17,7 @@ export const enum TokenKind {
     Comment,
     Punct,
     EndOfContent, // the '---' marker
+    SectionMarker, // a '--- TITLE' line inside a block body (spec 4.7)
     EndOfFile,
 }
 
@@ -67,6 +68,15 @@ export function tokenize(text: string): LexResult {
 
     const atLineStart = () => i === 0 || text[i - 1] === '\n';
 
+    // Whether nothing but blank space sits between the start of the line and
+    // `i`. Different from atLineStart: a section marker permits indentation.
+    const firstOnLine = () => {
+        for (let k = lineStart; k < i; k++) {
+            if (!' \t\r\f\v'.includes(text[k])) return false;
+        }
+        return true;
+    };
+
     while (i < text.length) {
         const c = text[i];
 
@@ -92,6 +102,20 @@ export function tokenize(text: string): LexResult {
                 contentEnd = i;
                 break;
             }
+        }
+
+        // Spec 4.7: inside a brace, a line-first '---' is the render section
+        // marker, and its title is free text running to the end of the line --
+        // '//' is not special in it, so the whole line is one token. Requiring
+        // depth above zero is what keeps this from ever eating the
+        // end-of-content marker, which is checked first.
+        if (c === '-' && braceDepth > 0 && firstOnLine() && text.startsWith('---', i)) {
+            const start = i;
+            while (i < text.length && text[i] !== '\n') i++;
+            let end = i;
+            while (end > start && ' \t\r'.includes(text[end - 1])) end--;
+            push(TokenKind.SectionMarker, start, end);
+            continue;
         }
 
         if (c === '/' && text[i + 1] === '/') {

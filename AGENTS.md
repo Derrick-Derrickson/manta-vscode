@@ -22,11 +22,26 @@ the authority on what that revision contains. `docs/spec.md` in the
 [Manta repository](https://github.com/Derrick-Derrickson/Manta) is where a
 construct is defined; §19 is the grammar and §2.6 the reserved words.
 
-Currently written against **revision 1.3**: everything 1.2 brought (the `cable`
-declaration, `@type` and the mating fields, the area unit `m2`, range values)
-plus the render section marker of §4.7 — a line-first `--- TITLE` inside a
-block body, which the grammar paints as a heading, the lexer carries as one
-whole-line token, and the outline shows as a caption under its block.
+Currently written against **revision 1.4**: everything 1.2 brought (the `cable`
+declaration, `@type` and the mating fields, the area unit `m2`, range values),
+the render section marker of §4.7 — a line-first `--- TITLE` inside a block
+body, which the grammar paints as a heading, the lexer carries as one
+whole-line token, and the outline shows as a caption under its block — and the
+chain bindings of 1.4.
+
+A binding may carry a whole chain rather than a single net name, so an instance
+can appear inside another instance's binding list (§7.4):
+
+```manta
+{U2~buck-3a: VIN = VPOS == .{C1~10uF-0805: .=GND; }; };
+```
+
+This needed no change here, and why is worth keeping: the designator rule is a
+pattern over `{DESIG~part`, not a structural match, so a nested instance
+highlights wherever it sits, and the scanner tracks brace depth rather than a
+statement grammar, so it already resolves `C1` as an instantiation. Anything
+added later that assumes an instance is only ever found at statement level will
+break on this.
 
 Adding a declaration kind here means three places, none of which the type checker
 will point at:

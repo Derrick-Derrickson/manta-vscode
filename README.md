@@ -3,7 +3,7 @@
 Editor support for the [Manta Schematic Definition Language](https://github.com/Derrick-Derrickson/Manta):
 syntax highlighting, a parts browser, and hover documentation.
 
-Written against language revision **1.3**.
+Written against language revision **1.4**.
 
 This extension is independent of the manta compiler. It reads `.manta` files
 directly, so it works on a machine that has no toolchain installed, and it never

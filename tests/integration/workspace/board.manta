@@ -8,7 +8,7 @@ block board {
     3V3>>;
 
     --- PROCESSOR
-    3V3 == {U2~MCU-48: SDA=I2C-SDA; }. == GND;
+    3V3 == {U2~MCU-48: .SDA=I2C-SDA; }. == GND;
 
     --- I2C PULL-UP
     3V3 == .{R5~R-pullup-4k7}. == I2C-SDA;
@@ -19,6 +19,6 @@ static part R-pullup-4k7 {
     #value      = 4k7R;
     #!type      = resistor;
 
-    1 = A &CASUAL;
-    2 = B &CASUAL;
+    1 : A &CASUAL;
+    2 : B &CASUAL;
 };

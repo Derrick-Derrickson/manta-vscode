@@ -167,9 +167,9 @@ test('text after the end-of-content marker is not scanned', () => {
 
 test('a declaration inside a comment is not a declaration', () => {
     const { declarations } = scan(`
-// part commented-out { 1 = A &CASUAL; };
+// part commented-out { 1: A &CASUAL; };
 /* part also-commented { }; */
-part real { @~footprint = F; 1 = A &CASUAL; };
+part real { @~footprint = F; 1: A &CASUAL; };
 `);
     assert.deepEqual(declarations.map((d) => d.name), ['real']);
 });
@@ -179,11 +179,19 @@ test('a declaration inside a string is not a declaration', () => {
 part real {
     @~footprint = F;
     #note = "part fake { } and a } brace";
-    1 = A &CASUAL;
+    1: A &CASUAL;
 };
 `);
     assert.deepEqual(declarations.map((d) => d.name), ['real']);
     assert.equal(declarations[0].pins.length, 1);
+});
+
+test('a pre-1.6 pin line with = still indexes', () => {
+    // Revision 1.6 maps a pin with ':'; the scanner keeps reading the old
+    // spelling so unmigrated libraries still populate the parts view.
+    const { declarations } = scan('part legacy { @~footprint = F; 1 = A &CASUAL; };');
+    assert.equal(declarations[0].pins.length, 1);
+    assert.equal(declarations[0].pins[0].logical, 'A');
 });
 
 test('nested declarations are found and kept nested', () => {
@@ -224,7 +232,7 @@ block charger {
     VBUS = VIN{U1~LDO-3V3}VOUT = 3V3;
 };
 
-part after { @~footprint = F; 1 = A &CASUAL; };
+part after { @~footprint = F; 1: A &CASUAL; };
 `);
     assert.deepEqual(declarations.map((d) => `${d.kind}:${d.name}`),
                      ['block:charger', 'part:after']);
@@ -265,7 +273,7 @@ test('a marker in a part body is stepped over, not recorded', () => {
 part misplaced {
     @~footprint = F;
     --- NOT LEGAL HERE
-    1 = A &CASUAL;
+    1: A &CASUAL;
     2 = B &CASUAL;
 };
 `);
@@ -283,7 +291,7 @@ block broken {
     ---
     A == B;
 };
-part survivor { @~footprint = F; 1 = A &CASUAL; };
+part survivor { @~footprint = F; 1: A &CASUAL; };
 `);
     const names = declarations.map((d) => d.name);
     assert.deepEqual(names, ['broken', 'survivor']);
@@ -296,7 +304,7 @@ part survivor { @~footprint = F; 1 = A &CASUAL; };
 
 test('resolves a name across files', () => {
     const store = new IndexStore();
-    store.update('file:///lib.manta', 'part shared { @~footprint = F; 1 = A &CASUAL; };');
+    store.update('file:///lib.manta', 'part shared { @~footprint = F; 1: A &CASUAL; };');
     store.update('file:///board.manta', 'block b { X = .{R1~shared}. = GND; };');
 
     const found = store.lookup('shared', 'file:///board.manta');
@@ -310,7 +318,7 @@ test('a static declaration is invisible from another file', () => {
     // models is real, and reporting the wrong declaration would be worse than
     // reporting none.
     const store = new IndexStore();
-    store.update('file:///lib.manta', 'static part hidden { @~footprint = F; 1 = A &CASUAL; };');
+    store.update('file:///lib.manta', 'static part hidden { @~footprint = F; 1: A &CASUAL; };');
 
     assert.equal(store.lookup('hidden', 'file:///other.manta'), undefined);
     assert.ok(store.lookup('hidden', 'file:///lib.manta'));
@@ -318,8 +326,8 @@ test('a static declaration is invisible from another file', () => {
 
 test('a local static declaration wins over an external one of the same name', () => {
     const store = new IndexStore();
-    store.update('file:///a.manta', 'static part dual { @~footprint = LOCAL; 1 = A &CASUAL; };');
-    store.update('file:///b.manta', 'part dual { @~footprint = EXTERNAL; 1 = A &CASUAL; };');
+    store.update('file:///a.manta', 'static part dual { @~footprint = LOCAL; 1: A &CASUAL; };');
+    store.update('file:///b.manta', 'part dual { @~footprint = EXTERNAL; 1: A &CASUAL; };');
 
     const fromA = store.lookup('dual', 'file:///a.manta')!;
     assert.equal(fromA.declaration.fields.find((f) => f.name === 'footprint')!.value, 'LOCAL');
@@ -332,8 +340,8 @@ test('a local static declaration wins over an external one of the same name', ()
 });
 
 test('listing is stable regardless of the order files arrive', () => {
-    const a = 'part zebra { @~footprint = F; 1 = A &CASUAL; };';
-    const b = 'part alpha { @~footprint = F; 1 = A &CASUAL; };';
+    const a = 'part zebra { @~footprint = F; 1: A &CASUAL; };';
+    const b = 'part alpha { @~footprint = F; 1: A &CASUAL; };';
 
     const first = new IndexStore();
     first.update('file:///1.manta', a);
@@ -351,7 +359,7 @@ test('listing is stable regardless of the order files arrive', () => {
 
 test('an edit that changes nothing visible does not report a change', () => {
     const store = new IndexStore();
-    const text = 'part p { @~footprint = F; 1 = A &CASUAL; };';
+    const text = 'part p { @~footprint = F; 1: A &CASUAL; };';
     assert.equal(store.update('file:///p.manta', text), true, 'first index is a change');
     assert.equal(store.update('file:///p.manta', text + '\n// a new comment'), false);
     assert.equal(store.update('file:///p.manta', text.replace('p {', 'q {')), true);
@@ -359,10 +367,10 @@ test('an edit that changes nothing visible does not report a change', () => {
 
 test('duplicate external names are found; static ones are not duplicates', () => {
     const store = new IndexStore();
-    store.update('file:///a.manta', 'part dup { @~footprint = F; 1 = A &CASUAL; };');
-    store.update('file:///b.manta', 'part dup { @~footprint = G; 1 = A &CASUAL; };');
-    store.update('file:///c.manta', 'static part priv { @~footprint = F; 1 = A &CASUAL; };');
-    store.update('file:///d.manta', 'static part priv { @~footprint = G; 1 = A &CASUAL; };');
+    store.update('file:///a.manta', 'part dup { @~footprint = F; 1: A &CASUAL; };');
+    store.update('file:///b.manta', 'part dup { @~footprint = G; 1: A &CASUAL; };');
+    store.update('file:///c.manta', 'static part priv { @~footprint = F; 1: A &CASUAL; };');
+    store.update('file:///d.manta', 'static part priv { @~footprint = G; 1: A &CASUAL; };');
 
     const duplicates = store.duplicates();
     assert.deepEqual([...duplicates.keys()], ['dup']);

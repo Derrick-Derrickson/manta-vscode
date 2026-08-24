@@ -10,11 +10,11 @@ part MCU-48 {
     #~mpn          = "STM32F030K6T6";
     >#~source      = digikey;
 
-    [1:48] = IO[1:48]<> #VOH=2V4 #VOL=0V4 #VIH=2V0 #VIL=0V8 &SWAP=bank0;
-    49     = SDA<>      &TYPE=OPENDRAIN #VOL=0V6;
-    50     = VCC<       &TYPE=POWER &~NET=3V3 #DRAW=25mA;
-    51     = GND<       &TYPE=POWER &~NET=GND;
-    52     = NC         &TYPE=NC;
+    [1:48] : IO[1:48]<> #VOH=2V4 #VOL=0V4 #VIH=2V0 #VIL=0V8 &SWAP=bank0;
+    49     : SDA<>      &TYPE=OPENDRAIN #VOL=0V6;
+    50     : VCC<       &TYPE=POWER &~NET=3V3 #DRAW=25mA;
+    51     : GND<       &TYPE=POWER &~NET=GND;
+    52     : NC         &TYPE=NC;
 };
 
 static part R-10k-1pct-0603 {
@@ -23,8 +23,8 @@ static part R-10k-1pct-0603 {
     #tolerance  = ±1%;
     #!type      = resistor;
 
-    1 = A &CASUAL;
-    2 = B &CASUAL;
+    1 : A &CASUAL;
+    2 : B &CASUAL;
 };
 
 harness i2c-bus {
@@ -58,20 +58,20 @@ block top {
     --- POWER TREE
     SW == SW-NODE
         = (.{L?~MT100UFA}.)+2
-        = (A{D?~DI3643}K)|2
+        = (A.{D?~DI3643}.K)|2
        == ({C?~100nF-0603: .=GND}.)*4
        == 3V3
-        = S{Q?~FFET123: G=nPWR-EN; }D
+        = S.{Q?~FFET123: .G=nPWR-EN; }.D
         = PWR-SWITCHED
         &CURRENT=3A &!VOLTAGE=6V &~LAYER=inner1;
 
     --- ANALOG I/O // not a comment: a render section title runs to end of line
-    >SIG[0:3] = [[ I{U?~AMP012: EN=%AMP-EN[0:3]; }O ]] = OUT[0:3]>;
+    >SIG[0:3] = [[ I.{U?~AMP012: .EN=%AMP-EN[0:3]; }.O ]] = OUT[0:3]>;
     >A[0:3] = [[.{R?~100kR-0603}.]] =* COMBINED>;
     VREF *= BIAS[0:7];
-    P = 1{J?~conn-4} ^ {J?~conn-4}1 = Q;
+    P = 1.{J?~conn-4} ^ {J?~conn-4}.1 = Q;
     {!R9~0R-0603};
-    3V3 == {U1~MCU-48: SDA=SDA-BUS; }. == GND;
+    3V3 == {U1~MCU-48: .SDA=SDA-BUS; }. == GND;
     TP1 = U1.GPIO9 &STUB;
     extern U9.1 = GND;
 };
@@ -82,7 +82,7 @@ part BACKPLANE-OUT {
     @~mate      = jumper-8way;
     @~footprint = HDR-8;
 
-    [1:8] = Q[1:8]<>;
+    [1:8] : Q[1:8]<>;
 };
 
 part JST-8-PLUG {
@@ -90,7 +90,7 @@ part JST-8-PLUG {
     @mates = [BACKPLANE-OUT, BACKPLANE-IN];
     @map   = [[1:8],[8:1]];
 
-    [1:8] = P[1:8]<>;
+    [1:8] : P[1:8]<>;
 };
 
 part WIRE-22AWG-RED {
@@ -100,14 +100,14 @@ part WIRE-22AWG-RED {
     #colour     = red;
     #insulation = PVC;
 
-    1 = A &CASUAL;
-    2 = B &CASUAL;
+    1 : A &CASUAL;
+    2 : B &CASUAL;
 };
 
 cable jumper-8way {
     #length = 300mm;
 
-    {J1~JST-8-PLUG}P[1:8] = [[ .{W%[1:8]~WIRE-22AWG-RED}. ]] = P[1:8]{J2~JST-8-PLUG};
+    {J1~JST-8-PLUG}.P[1:8] = [[ .{W%[1:8]~WIRE-22AWG-RED}. ]] = P[1:8].{J2~JST-8-PLUG};
 };
 
 ---

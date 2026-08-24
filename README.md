@@ -3,7 +3,7 @@
 Editor support for the [Manta Schematic Definition Language](https://github.com/Derrick-Derrickson/Manta):
 syntax highlighting, a parts browser, and hover documentation.
 
-Written against language revision **1.4**.
+Written against language revision **1.6**.
 
 This extension is independent of the manta compiler. It reads `.manta` files
 directly, so it works on a machine that has no toolchain installed, and it never
@@ -123,10 +123,10 @@ npm install
 npm run compile
 npm test              # 100 tests, no editor required
 npm run test:integration   # 20 more, inside a real VS Code
-npm run package       # produces manta-vscode-0.3.0.vsix
+npm run package       # produces manta-vscode-0.4.0.vsix
 ```
 
-Install the result with `code --install-extension manta-vscode-0.3.0.vsix`, or
+Install the result with `code --install-extension manta-vscode-0.4.0.vsix`, or
 from the Extensions view's **Install from VSIX…** menu.
 
 ### Testing the highlighting

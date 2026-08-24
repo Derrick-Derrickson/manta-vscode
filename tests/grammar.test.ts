@@ -349,9 +349,20 @@ test('an unassigned designator and a do-not-populate marker are marked', async (
     assertScope(tokens, '?', 'constant.numeric.designator.manta');
 });
 
+test('a pin declaration maps with a colon (revision 1.6)', async () => {
+    const tokens = await tokenize('part p {\n    5: SDA<>;\n    [1:4]: IO[1:4]<>;\n};');
+    assertScope(tokens, '5', 'constant.numeric.pin.physical.manta');
+    assertScope(tokens, ':', 'punctuation.separator.pin-declaration.manta');
+});
+
+test('the membership dot is an accessor (revision 1.6)', async () => {
+    const tokens = await tokenize('block b {\n    X = A.{D1~d}.K = Y;\n    .{R1~r}. = GND;\n};');
+    assertScope(tokens, '.', 'punctuation.accessor.manta');
+});
+
 test('each connector is its own operator', async () => {
     const tokens = await tokenize('block b {\n    A = B == C =* D;\n    E *= F;\n    P ^ Q;\n};');
-    assertScope(tokens, '==', 'keyword.operator.same-net.manta');
+    assertScope(tokens, '==', 'keyword.operator.continue.manta');
     assertScope(tokens, '=*', 'keyword.operator.gather.manta');
     assertScope(tokens, '*=', 'keyword.operator.broadcast.manta');
     assertScope(tokens, '^', 'keyword.operator.adjacency.manta');
@@ -449,7 +460,7 @@ test('a section marker reads as a heading, indentation and all', async () => {
     assertScope(tokens, 'USB-C POWER IN', 'markup.heading.manta');
     assertScope(tokens, 'USB-C POWER IN', 'entity.name.section.manta');
     // The code after the marker is still code.
-    assertScope(tokens, '==', 'keyword.operator.same-net.manta');
+    assertScope(tokens, '==', 'keyword.operator.continue.manta');
 });
 
 test("'//' in a section title is title, not a comment", async () => {

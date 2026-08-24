@@ -391,7 +391,9 @@ class Scanner {
         return { namespace, strength, name, value, direction, range: this.rangeOf(first, last) };
     }
 
-    /** `(integer | '[' a ':' b ']') '=' logical [arrow] {directive|field} ';'` */
+    /** `(integer | '[' a ':' b ']') ':' logical [arrow] {directive|field} ';'`
+     *  Revision 1.6 maps a pin with ':'; '=' is accepted so pre-1.6 files
+     *  still index. */
     private tryPin(): Pin | null {
         const start = this.pos;
         const first = this.cur;
@@ -432,7 +434,7 @@ class Scanner {
             return null;
         }
 
-        if (!this.is('=')) {
+        if (!this.is(':') && !this.is('=')) {
             this.pos = start;
             return null;
         }

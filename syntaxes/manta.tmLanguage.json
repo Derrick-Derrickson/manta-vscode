@@ -3,32 +3,49 @@
   "name": "Manta",
   "scopeName": "source.manta",
   "patterns": [
-    { "include": "#end-of-content" },
-    { "include": "#section-marker" },
-    { "include": "#comments" },
-    { "include": "#declaration" },
-    { "include": "#body" }
+    {
+      "include": "#end-of-content"
+    },
+    {
+      "include": "#section-marker"
+    },
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#declaration"
+    },
+    {
+      "include": "#body"
+    },
+    {
+      "include": "#pin-declaration"
+    }
   ],
   "repository": {
     "end-of-content": {
       "comment": "Spec 2.8: a line of exactly '---' ends the manta content. Everything after is documentation, and is left unhighlighted rather than coloured as though it were code.",
       "begin": "^(---)[ \\t]*$",
       "beginCaptures": {
-        "1": { "name": "keyword.control.end-of-content.manta" }
+        "1": {
+          "name": "keyword.control.end-of-content.manta"
+        }
       },
       "end": "\\z",
       "contentName": "comment.block.documentation.manta"
     },
-
     "section-marker": {
       "comment": "Spec 4.7: a line-first '---' with a title names a render section inside a block body. The title is free text to the end of the line and '//' is not special in it, so the rule sits before the comment rules and takes the whole line. A grammar cannot see brace depth, so the marker reads as a heading wherever it is written; the bare '---' of 2.8 never matches here because this rule requires a title, and the end-of-content rule is tried first.",
       "match": "^\\s*(---)[ \\t]+(\\S.*?)[ \\t]*$",
       "captures": {
-        "1": { "name": "punctuation.definition.heading.manta" },
-        "2": { "name": "markup.heading.manta entity.name.section.manta" }
+        "1": {
+          "name": "punctuation.definition.heading.manta"
+        },
+        "2": {
+          "name": "markup.heading.manta entity.name.section.manta"
+        }
       }
     },
-
     "comments": {
       "patterns": [
         {
@@ -44,68 +61,115 @@
         }
       ]
     },
-
     "declaration": {
       "comment": "The five declaration kinds, and the one linkage keyword.",
       "match": "\\b(static)?\\s*\\b(block|part|harness|netclass|match|cable)\\b\\s+([A-Za-z0-9_][A-Za-z0-9_\\-]*)?",
       "captures": {
-        "1": { "name": "storage.modifier.linkage.manta" },
-        "2": { "name": "keyword.declaration.manta" },
-        "3": { "name": "entity.name.type.manta" }
+        "1": {
+          "name": "storage.modifier.linkage.manta"
+        },
+        "2": {
+          "name": "keyword.declaration.manta"
+        },
+        "3": {
+          "name": "entity.name.type.manta"
+        }
       }
     },
-
     "body": {
       "patterns": [
-        { "include": "#comments" },
-        { "include": "#substitution" },
-        { "include": "#strings" },
-        { "include": "#field" },
-        { "include": "#directive" },
-        { "include": "#instance" },
-        { "include": "#extern" },
-        { "include": "#connectors" },
-        { "include": "#multiplicity" },
-        { "include": "#ports" },
-        { "include": "#values" },
-        { "include": "#punctuation" }
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#substitution"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#field"
+        },
+        {
+          "include": "#directive"
+        },
+        {
+          "include": "#instance"
+        },
+        {
+          "include": "#extern"
+        },
+        {
+          "include": "#connectors"
+        },
+        {
+          "include": "#multiplicity"
+        },
+        {
+          "include": "#ports"
+        },
+        {
+          "include": "#values"
+        },
+        {
+          "include": "#punctuation"
+        }
       ]
     },
-
     "extern": {
       "match": "\\b(extern)\\b",
       "name": "keyword.control.extern.manta"
     },
-
     "field": {
       "comment": "Spec 9: '@' is the closed system namespace, '#' the open user one. The strength modifier sits between the sigil and the name, and a '>' either side marks an import or an export.",
       "match": "(>)?([@#])([~!])?([A-Za-z0-9_][A-Za-z0-9_\\-]*)(>)?",
       "captures": {
-        "1": { "name": "keyword.operator.import.manta" },
-        "2": { "name": "punctuation.definition.field.manta" },
-        "3": { "name": "storage.modifier.strength.manta" },
-        "4": { "name": "variable.other.field.manta" },
-        "5": { "name": "keyword.operator.export.manta" }
+        "1": {
+          "name": "keyword.operator.import.manta"
+        },
+        "2": {
+          "name": "punctuation.definition.field.manta"
+        },
+        "3": {
+          "name": "storage.modifier.strength.manta"
+        },
+        "4": {
+          "name": "variable.other.field.manta"
+        },
+        "5": {
+          "name": "keyword.operator.export.manta"
+        }
       }
     },
-
     "directive": {
       "comment": "Spec 11: '&' introduces a directive. The namespace is closed, so a known name reads as a keyword and an unknown one still reads as a directive.",
       "patterns": [
         {
           "match": "(&)([~!])?\\b(IMP|CURRENT|PEAK|VOLTAGE|MAXDELAY|CLASS|MATCH|LAYER|SHIELD|TYPE|STUB|PINDELAY|NET|CASUAL|SWAP|HARNESS)\\b",
           "captures": {
-            "1": { "name": "punctuation.definition.directive.manta" },
-            "2": { "name": "storage.modifier.strength.manta" },
-            "3": { "name": "support.type.directive.manta" }
+            "1": {
+              "name": "punctuation.definition.directive.manta"
+            },
+            "2": {
+              "name": "storage.modifier.strength.manta"
+            },
+            "3": {
+              "name": "support.type.directive.manta"
+            }
           }
         },
         {
           "match": "(&)([~!])?([A-Za-z0-9_][A-Za-z0-9_\\-]*)",
           "captures": {
-            "1": { "name": "punctuation.definition.directive.manta" },
-            "2": { "name": "storage.modifier.strength.manta" },
-            "3": { "name": "entity.name.function.directive.manta" }
+            "1": {
+              "name": "punctuation.definition.directive.manta"
+            },
+            "2": {
+              "name": "storage.modifier.strength.manta"
+            },
+            "3": {
+              "name": "entity.name.function.directive.manta"
+            }
           }
         },
         {
@@ -115,48 +179,84 @@
         }
       ]
     },
-
     "instance": {
       "comment": "Spec 7: a device is '{ designator [~ part] [: bindings] }'. The '~' is what distinguishes declaring an instance from referencing one, so the name after it is the part or block being instantiated.",
       "patterns": [
         {
           "match": "(!)?([A-Za-z_][A-Za-z0-9_\\-]*?)(\\?|[0-9]+|%\\[[0-9,:]*\\])\\s*(~)\\s*([A-Za-z0-9_][A-Za-z0-9_\\-]*)",
           "captures": {
-            "1": { "name": "keyword.operator.dnp.manta" },
-            "2": { "name": "variable.other.designator.manta" },
-            "3": { "name": "constant.numeric.designator.manta" },
-            "4": { "name": "keyword.operator.instantiate.manta" },
-            "5": { "name": "entity.name.type.instantiated.manta" }
+            "1": {
+              "name": "keyword.operator.dnp.manta"
+            },
+            "2": {
+              "name": "variable.other.designator.manta"
+            },
+            "3": {
+              "name": "constant.numeric.designator.manta"
+            },
+            "4": {
+              "name": "keyword.operator.instantiate.manta"
+            },
+            "5": {
+              "name": "entity.name.type.instantiated.manta"
+            }
           }
         },
         {
           "comment": "A reference to an instance declared elsewhere: '{U3}'.",
           "match": "(?<=\\{)\\s*(!)?([A-Za-z_][A-Za-z0-9_\\-]*?)(\\?|[0-9]+|%\\[[0-9,:]*\\])(?=\\s*[}:])",
           "captures": {
-            "1": { "name": "keyword.operator.dnp.manta" },
-            "2": { "name": "variable.other.designator.manta" },
-            "3": { "name": "constant.numeric.designator.manta" }
+            "1": {
+              "name": "keyword.operator.dnp.manta"
+            },
+            "2": {
+              "name": "variable.other.designator.manta"
+            },
+            "3": {
+              "name": "constant.numeric.designator.manta"
+            }
           }
         }
       ]
     },
-
     "substitution": {
       "comment": "Spec 14: inside '$...$' every operator carries its arithmetic meaning, '-' is always subtraction and '/' is never a comment.",
       "name": "meta.embedded.substitution.manta",
       "begin": "\\$",
       "end": "\\$",
-      "beginCaptures": { "0": { "name": "punctuation.definition.substitution.begin.manta" } },
-      "endCaptures": { "0": { "name": "punctuation.definition.substitution.end.manta" } },
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.substitution.begin.manta"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.substitution.end.manta"
+        }
+      },
       "patterns": [
-        { "name": "string.quoted.double.manta", "match": "\"[^\"]*\"" },
-        { "name": "constant.numeric.manta", "match": "\\b[0-9]+\\b" },
-        { "name": "constant.language.boolean.manta", "match": "\\b(true|false)\\b" },
-        { "name": "keyword.operator.arithmetic.manta", "match": "[+\\-*/^|&~!<>=]" },
-        { "name": "variable.other.field.manta", "match": "[A-Za-z_][A-Za-z0-9_]*" }
+        {
+          "name": "string.quoted.double.manta",
+          "match": "\"[^\"]*\""
+        },
+        {
+          "name": "constant.numeric.manta",
+          "match": "\\b[0-9]+\\b"
+        },
+        {
+          "name": "constant.language.boolean.manta",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "keyword.operator.arithmetic.manta",
+          "match": "[+\\-*/^|&~!<>=]"
+        },
+        {
+          "name": "variable.other.field.manta",
+          "match": "[A-Za-z_][A-Za-z0-9_]*"
+        }
       ]
     },
-
     "strings": {
       "name": "string.quoted.double.manta",
       "begin": "\"",
@@ -167,39 +267,66 @@
           "name": "constant.character.escape.manta",
           "match": "\\\\[\"\\\\nt]"
         },
-        { "name": "invalid.illegal.unknown-escape.manta", "match": "\\\\." }
+        {
+          "name": "invalid.illegal.unknown-escape.manta",
+          "match": "\\\\."
+        }
       ]
     },
-
     "connectors": {
-      "comment": "Spec 6. '==' before '=' so the longer operator wins.",
+      "comment": "Spec 6, revision 1.6. '==' continues on the node after a dead-end element; '=' is the plain join. '==' before '=' so the longer operator wins.",
       "patterns": [
-        { "name": "keyword.operator.gather.manta", "match": "=\\*" },
-        { "name": "keyword.operator.broadcast.manta", "match": "\\*=" },
-        { "name": "keyword.operator.same-net.manta", "match": "==" },
-        { "name": "keyword.operator.adjacency.manta", "match": "\\^" },
-        { "name": "keyword.operator.advance.manta", "match": "=" }
+        {
+          "name": "keyword.operator.gather.manta",
+          "match": "=\\*"
+        },
+        {
+          "name": "keyword.operator.broadcast.manta",
+          "match": "\\*="
+        },
+        {
+          "name": "keyword.operator.continue.manta",
+          "match": "=="
+        },
+        {
+          "name": "keyword.operator.adjacency.manta",
+          "match": "\\^"
+        },
+        {
+          "name": "keyword.operator.advance.manta",
+          "match": "="
+        }
       ]
     },
-
     "multiplicity": {
       "comment": "Spec 8.6: series, parallel and node multiplicity on a group.",
       "match": "(?<=\\))\\s*([+|*])([0-9]+)",
       "captures": {
-        "1": { "name": "keyword.operator.multiplicity.manta" },
-        "2": { "name": "constant.numeric.count.manta" }
+        "1": {
+          "name": "keyword.operator.multiplicity.manta"
+        },
+        "2": {
+          "name": "constant.numeric.count.manta"
+        }
       }
     },
-
     "ports": {
       "comment": "Spec 10. A doubled arrow is a global port; the direction depends on which side of the name it sits.",
       "patterns": [
-        { "name": "keyword.operator.port.global.manta", "match": ">>" },
-        { "name": "keyword.operator.port.bidirectional.manta", "match": "<>" },
-        { "name": "keyword.operator.port.manta", "match": "[<>]" }
+        {
+          "name": "keyword.operator.port.global.manta",
+          "match": ">>"
+        },
+        {
+          "name": "keyword.operator.port.bidirectional.manta",
+          "match": "<>"
+        },
+        {
+          "name": "keyword.operator.port.manta",
+          "match": "[<>]"
+        }
       ]
     },
-
     "values": {
       "patterns": [
         {
@@ -216,9 +343,15 @@
           "comment": "Spec 12A.2: a range inside a value list, which is what keeps a twenty-way pin map to one pair. Only inside brackets -- elsewhere ':' is the binding separator and has nothing to do with values. A range may descend, and that is how a reversed ribbon is written.",
           "match": "(?<=[\\[,]\\s{0,8})(-?[0-9]+)(:)(-?[0-9]+)(?=\\s{0,8}[\\],])",
           "captures": {
-            "1": { "name": "constant.numeric.range.manta" },
-            "2": { "name": "punctuation.separator.range.manta" },
-            "3": { "name": "constant.numeric.range.manta" }
+            "1": {
+              "name": "constant.numeric.range.manta"
+            },
+            "2": {
+              "name": "punctuation.separator.range.manta"
+            },
+            "3": {
+              "name": "constant.numeric.range.manta"
+            }
           }
         },
         {
@@ -245,20 +378,61 @@
         }
       ]
     },
-
     "punctuation": {
       "patterns": [
-        { "name": "punctuation.definition.replication.manta", "match": "\\[\\[|\\]\\]" },
-        { "name": "punctuation.terminator.statement.manta", "match": ";" },
-        { "name": "punctuation.separator.binding.manta", "match": ":" },
-        { "name": "punctuation.separator.comma.manta", "match": "," },
-        { "name": "keyword.operator.unassigned.manta", "match": "\\?" },
-        { "name": "keyword.operator.percopy.manta", "match": "%" },
-        { "name": "punctuation.section.braces.manta", "match": "[{}]" },
-        { "name": "punctuation.section.brackets.manta", "match": "[\\[\\]]" },
-        { "name": "punctuation.section.parens.manta", "match": "[()]" },
-        { "name": "punctuation.accessor.manta", "match": "\\." }
+        {
+          "name": "punctuation.definition.replication.manta",
+          "match": "\\[\\[|\\]\\]"
+        },
+        {
+          "name": "punctuation.terminator.statement.manta",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.binding.manta",
+          "match": ":"
+        },
+        {
+          "name": "punctuation.separator.comma.manta",
+          "match": ","
+        },
+        {
+          "name": "keyword.operator.unassigned.manta",
+          "match": "\\?"
+        },
+        {
+          "name": "keyword.operator.percopy.manta",
+          "match": "%"
+        },
+        {
+          "name": "punctuation.section.braces.manta",
+          "match": "[{}]"
+        },
+        {
+          "name": "punctuation.section.brackets.manta",
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "punctuation.section.parens.manta",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.accessor.manta",
+          "match": "\\."
+        }
       ]
+    },
+    "pin-declaration": {
+      "comment": "Spec 4.5, revision 1.6: a pin declaration maps its pad to a name with ':'. The physical pin is a number or a bracketed range at the start of the line.",
+      "match": "^\\s*((?:\\d+|\\[\\d+:\\d+\\]))\\s*(:)(?!=)",
+      "captures": {
+        "1": {
+          "name": "constant.numeric.pin.physical.manta"
+        },
+        "2": {
+          "name": "punctuation.separator.pin-declaration.manta"
+        }
+      }
     }
   }
 }

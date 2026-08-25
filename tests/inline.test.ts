@@ -20,7 +20,8 @@ test('a part-name value reads out of the usual spellings', () => {
 test('a passive collapses to its symbol and value', () => {
     const facts = computeInline('block b { X = .{R1~R-10kR-0603}. = Y; };', none);
     assert.equal(facts.devices.length, 1);
-    assert.equal(facts.devices[0].text, '▭ 10kR');
+    assert.equal(facts.devices[0].kind, 'resistor');
+    assert.equal(facts.devices[0].value, '10kR');
     const line = 'block b { X = .{R1~R-10kR-0603}. = Y; };';
     const d = facts.devices[0];
     assert.equal(line.slice(d.hide.start, d.hide.end), '~R-10kR-0603');
@@ -29,13 +30,14 @@ test('a passive collapses to its symbol and value', () => {
 test('the index value wins over the part-name guess', () => {
     const facts = computeInline('block b { X = .{C3~BOOT-CAP}. = Y; };',
                                 (p) => (p === 'BOOT-CAP' ? '100nF' : undefined));
-    assert.equal(facts.devices[0].text, '┤├ 100nF');
+    assert.equal(facts.devices[0].kind, 'capacitor');
+    assert.equal(facts.devices[0].value, '100nF');
 });
 
 test('diodes and LEDs get their own symbols', () => {
     const facts = computeInline(
         'block b { A = K.{D2~D-SS34: .A=GND;}; B = A.{D4~LED-RED}.K = C; };', none);
-    assert.deepEqual(facts.devices.map((d) => d.text), ['▷|', '▷|°']);
+    assert.deepEqual(facts.devices.map((d) => d.kind), ['diode', 'led']);
 });
 
 test("a '=' join draws under the gap between terminals", () => {
@@ -80,6 +82,14 @@ test('binding pins join their nets', () => {
     const facts = computeInline(src, none);
     const under = facts.joins.filter((j) => !j.over);
     assert.equal(under.length, 2);
+});
+
+test('terminal dots stand on the wire', () => {
+    const src = 'block b { X = .{R1~R-10kR-0603}. = Y; {U2~p: . = GND; }; A = K.{D1~d}; };';
+    const facts = computeInline(src, () => undefined);
+    // R1's two terminal dots, the casual binding dot, and D1's attachment dot.
+    assert.equal(facts.dots.length, 4);
+    for (const d of facts.dots) assert.equal(src.slice(d.start, d.end), '.');
 });
 
 test('nothing after the end-of-content marker is analysed', () => {

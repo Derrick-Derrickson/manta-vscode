@@ -15,22 +15,25 @@ shells out to `manta`.
 
 The editor draws what a chain means, in place, without touching the text:
 
-- **Wires.** A faint line runs under the gap of every `=` join, and a `==`
-  continuation draws its line *up and over* the dead-end part it hops — the
-  bootstrap cap visibly rides its switching node.
-- **Symbols.** A passive's `~PART-NAME` collapses to a symbol and its value:
-  `▭ 10kR`, `┤├ 100nF`, `∿∿ 4u7H`, `▷|` — the value taken from the part's
-  `#value` in the workspace index, or read out of the part name. The line the
-  cursor sits on always shows the source as written, so editing is never a
-  fight.
+- **Wires.** A blue line runs straight through the middle of every `=` join —
+  through the equals sign itself — and a `==` continuation draws its line *up
+  and over* the dead-end part it hops, so the bootstrap cap visibly rides its
+  switching node. Terminal dots (`.`) lift to mid-height junction points that
+  sit on the wire.
+- **Symbols.** A passive's `~PART-NAME` collapses to a properly drawn SVG
+  symbol sized in character cells: a five-cell IEC resistor box with the value
+  set inside it, inductor humps, capacitor plates, a diode triangle — the
+  value taken from the part's `#value` in the workspace index, or read out of
+  the part name. The line the cursor sits on always shows the source as
+  written, so editing is never a fight.
 - **Net glyphs.** Ground nets (`&TYPE=GROUND`, or a `GND`-shaped name) carry
   `⏚`; power rails (`&RAIL`, `&CLASS=power`, or a rail-shaped name such as
   `3V3` or `VBAT`) carry `↥`.
 
-Everything is a decoration — the file is untouched. Toggle with **Manta:
-Toggle Inline Schematic**, or per-layer via `manta.inline.wires`,
-`manta.inline.symbols` and `manta.inline.marks`. Colours are themable through
-`manta.wire` and `manta.glyph`.
+Everything is a decoration — the file is untouched, and the drawing follows
+the editor's font size and light/dark theme. Toggle with **Manta: Toggle
+Inline Schematic**, or per-layer via `manta.inline.wires`,
+`manta.inline.symbols` and `manta.inline.marks`.
 
 ### Syntax highlighting
 

@@ -22,8 +22,10 @@ export interface InlineSpan {
 export interface InlineDevice {
     /** The '~PART-NAME' span the editor may hide. */
     hide: InlineSpan;
-    /** What to show in its place: symbol, then the value when known. */
-    text: string;
+    /** What to draw in its place. */
+    kind: 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'led';
+    /** The value, when one is known: "10kR", "100nF". Empty otherwise. */
+    value: string;
 }
 
 export interface InlineJoin {
@@ -45,18 +47,12 @@ export interface InlineFacts {
     devices: InlineDevice[];
     joins: InlineJoin[];
     marks: InlineMark[];
+    /** Terminal dots -- '.' tokens standing on a wire -- drawn mid-height. */
+    dots: InlineSpan[];
 }
 
-const SYMBOLS: Record<string, string> = {
-    resistor: '▭',
-    capacitor: '┤├',
-    inductor: '∿∿',
-    diode: '▷|',
-    led: '▷|°',
-};
-
 /** R1 -> resistor, C? -> capacitor ... anything else -> undefined. */
-function kindOf(designator: string, partName: string): string | undefined {
+function kindOf(designator: string, partName: string): InlineDevice['kind'] | undefined {
     const m = /^([A-Za-z]+)(\d+|\?)$/.exec(designator);
     if (!m) return undefined;
     switch (m[1]) {
@@ -85,7 +81,7 @@ export function computeInline(
     lookupValue: (partName: string) => string | undefined,
 ): InlineFacts {
     const { tokens, contentEnd } = tokenize(text);
-    const facts: InlineFacts = { devices: [], joins: [], marks: [] };
+    const facts: InlineFacts = { devices: [], joins: [], marks: [], dots: [] };
 
     // Meaningful tokens only, stopping at the end-of-content marker.
     const ts: Token[] = [];
@@ -170,7 +166,7 @@ export function computeInline(
 
         // Entry terminal: a dot run, or name/list attached through a dot.
         if (isPunct(j, '.')) {
-            while (isPunct(j, '.')) j++;
+            while (isPunct(j, '.')) facts.dots.push(spanOf(ts[j++]));
             if (!isPunct(j, '{')) {
                 // Not a device: a binding's '.PIN' (pin of this instance) or
                 // its bare '.' casual pin -- an element in its own right.
@@ -186,8 +182,10 @@ export function computeInline(
         } else if (isPunct(j, '[') && ts[matchClose(j, '[', ']') + 1] !== undefined
                    && isPunct(matchClose(j, '[', ']') + 1, '.')) {
             j = matchClose(j, '[', ']') + 2;
+            facts.dots.push(spanOf(ts[j - 1]));
             if (!isPunct(j, '{')) return null;
         } else if (isWord(j) && isPunct(j + 1, '.') && isPunct(j + 2, '{')) {
+            facts.dots.push(spanOf(ts[j + 1]));
             j += 2;
         }
 
@@ -199,6 +197,7 @@ export function computeInline(
             j = close + 1;
             // Exit terminal: '.', '.NAME', '.[list]', or a dot run.
             if (isPunct(j, '.')) {
+                facts.dots.push(spanOf(ts[j]));
                 j++;
                 if (isWord(j)) {
                     j++;
@@ -206,7 +205,7 @@ export function computeInline(
                 } else if (isPunct(j, '[')) {
                     j = matchClose(j, '[', ']') + 1;
                 } else {
-                    while (isPunct(j, '.')) j++;
+                    while (isPunct(j, '.')) facts.dots.push(spanOf(ts[j++]));
                 }
             }
             return { first, last: j - 1 };
@@ -272,7 +271,8 @@ export function computeInline(
         facts.devices.push({
             hide: { line: ts[j].line, start: ts[j].character,
                     end: ts[j + 1].character + ts[j + 1].text.length },
-            text: value ? `${SYMBOLS[kind]} ${value}` : SYMBOLS[kind],
+            kind,
+            value,
         });
     };
 

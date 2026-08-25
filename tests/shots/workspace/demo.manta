@@ -1,0 +1,37 @@
+// Inline schematic showcase: every drawn form on one screen.
+part R-10kR-0603 { @~footprint = R-0603; #value = 10kR; 1: A &CASUAL; 2: B &CASUAL; };
+part R-100kR-0603 { @~footprint = R-0603; #value = 100kR; 1: A &CASUAL; 2: B &CASUAL; };
+part C-100nF-0603 { @~footprint = C-0603; #value = 100nF; 1: A &CASUAL; 2: B &CASUAL; };
+part C-10uF-0805 { @~footprint = C-0805; #value = 10uF; 1: A &CASUAL; 2: B &CASUAL; };
+part L-4u7H { @~footprint = L-5x5; #value = 4u7H; 1: A; 2: B; };
+part D-SS34 { @~footprint = SOD-123; 1: A; 2: K; };
+part LED-RED { @~footprint = LED-0603; #value = red; 1: A; 2: K; };
+part MP1584 { @~footprint = SOIC-8; 1: VIN<; 2: SW>; 3: BST<; 4: FB<; 5: EN<; 6: GND< &TYPE=POWER &~NET=GND; };
+
+block showcase {
+    GND &TYPE=GROUND;
+    VSYS-PROT &RAIL;
+
+    // Plain joins, a pull-up, a decap ladder.
+    3V3 = .{R1~R-10kR-0603}. = nRESET;
+    nRESET = .{C1~C-100nF-0603: . = GND;};
+    3V3 = .{C2~C-10uF-0805: . = GND;} == .{C3~C-100nF-0603: . = GND;};
+
+    // The buck: attach, stay, stay, advance.
+    SW = K.{D2~D-SS34: .A = GND;} == .{C4~C-100nF-0603: . = BST;} == A.{L1~L-4u7H}.B = 5V;
+    5V = .{C5~C-10uF-0805: . = GND;};
+
+    // An LED chain and a divider.
+    3V3 = .{R2~R-100kR-0603}. = A.{D4~LED-RED}.K = GND;
+    FB = .{R3~R-100kR-0603: . = 5V;} == .{R4~R-10kR-0603: . = GND;};
+
+    // A binding list.
+    {U2~MP1584:
+        .VIN = VSYS-PROT;
+        .EN  = .{R5~R-100kR-0603}. = VSYS-PROT;
+        .GND = GND;
+    };
+};
+
+part R-CAL { @~footprint = F; #value = CAL; 1: A &CASUAL; 2: B &CASUAL; };
+block cal { CGND &TYPE=GROUND; XX = .{R9~R-CAL}. = YY = CGND; };

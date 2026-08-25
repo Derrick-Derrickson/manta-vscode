@@ -3,3 +3,4 @@ out/
 *.vsix
 .vscode-test/
 tests/integration/workspace/.vscode/
+tests/shots/out/

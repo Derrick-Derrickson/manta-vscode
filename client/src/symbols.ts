@@ -170,17 +170,17 @@ export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
     const stroke = `stroke="${theme.stroke}" stroke-width="${sw}" fill="none"`;
 
     if (kind === 'ground') {
-        // The wire dives to a ground symbol; the name stands beside it.
-        const gx = Math.round(1.1 * ch);
-        const w = gx + 6 + textW;
+        // The drop sits where the wire lands -- flush with the connecting
+        // net -- and the name stands beside it at wire height.
+        const gx = 6;
+        const w = gx + 8 + textW;
         const y0 = cy + Math.round(fontSize * 0.16);
         let svg = lead(0, gx) +
             `<line x1="${gx}" y1="${cy}" x2="${gx}" y2="${y0}" ${stroke}/>` +
             `<line x1="${gx - 5}" y1="${y0}" x2="${gx + 5}" y2="${y0}" ${stroke}/>` +
             `<line x1="${gx - 3}" y1="${y0 + 3}" x2="${gx + 3}" y2="${y0 + 3}" ${stroke}/>` +
             `<line x1="${gx - 1}" y1="${y0 + 6}" x2="${gx + 1}" y2="${y0 + 6}" ${stroke}/>`;
-        svg += textEl(gx + 6 + textW / 2, cy + Math.round(fontSize * 0.25),
-                      labelSize, theme.label, name);
+        svg += textEl(gx + 8 + textW / 2, cy, labelSize, theme.label, name);
         return svgUri(w, h, svg);
     }
 
@@ -202,39 +202,50 @@ export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
 
 /** One cell of the yellow instance pin box: the header carries the
  *  designator and part, each pin row its pin name and a wire stub. */
-export function pinCellIcon(label: string, widthCh: number, header: boolean,
+export type CellRole = 'header' | 'pin' | 'filler' | 'closer';
+export function pinCellIcon(label: string, widthCh: number, role: CellRole,
                             fontSize: number, theme: SymbolTheme,
-                            last = false): vscode.Uri {
+                            padCh = 0): vscode.Uri {
+    const header = role === 'header';
+    const last = role === 'closer';
     const ch = cellWidth(fontSize);
     // Two pixels past the line pitch, so stacked cells touch and the column
     // reads as one body.
     const h = Math.round(fontSize * 1.9) + 2;
     const cy = Math.round(h - fontSize * 0.30) - iconDrop(fontSize) - 2;
     const sw = Math.max(1.2, fontSize / 12);
+    const pad = Math.round(padCh * ch);
     const boxW = Math.round(widthCh * ch);
-    const stub = header ? 0 : Math.round(1.2 * ch);
-    const w = boxW + stub;
+    const stub = role === 'pin' ? Math.round(1.2 * ch) : 0;
+    const w = pad + boxW + stub;
     const size = Math.round(fontSize * (header ? 0.72 : 0.78));
-    let svg = `<rect x="${sw / 2}" y="0" width="${boxW - sw}" height="${h}" ` +
+    const x0 = pad + sw / 2;
+    const x1 = pad + boxW - sw / 2;
+    let svg = `<rect x="${x0}" y="0" width="${boxW - sw}" height="${h}" ` +
         `fill="${theme.boxFill}" stroke="none"/>` +
-        `<line x1="${sw / 2}" y1="0" x2="${sw / 2}" y2="${h}" ` +
+        `<line x1="${x0}" y1="0" x2="${x0}" y2="${h}" ` +
         `stroke="${theme.boxStroke}" stroke-width="${sw}"/>` +
-        `<line x1="${boxW - sw / 2}" y1="0" x2="${boxW - sw / 2}" y2="${h}" ` +
+        `<line x1="${x1}" y1="0" x2="${x1}" y2="${h}" ` +
         `stroke="${theme.boxStroke}" stroke-width="${sw}"/>`;
     if (header) {
-        svg += `<line x1="${sw / 2}" y1="${sw / 2}" x2="${boxW - sw / 2}" y2="${sw / 2}" ` +
+        svg += `<line x1="${x0}" y1="${sw / 2}" x2="${x1}" y2="${sw / 2}" ` +
             `stroke="${theme.boxStroke}" stroke-width="${sw}"/>`;
     }
     if (last) {
-        svg += `<line x1="${sw / 2}" y1="${h - sw / 2}" x2="${boxW - sw / 2}" y2="${h - sw / 2}" ` +
+        svg += `<line x1="${x0}" y1="${h - sw / 2}" x2="${x1}" y2="${h - sw / 2}" ` +
             `stroke="${theme.boxStroke}" stroke-width="${sw}"/>`;
     }
-    const esc = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    svg += `<text x="${Math.round(0.6 * ch)}" y="${cy}" font-family="monospace" ` +
-        `font-size="${size}" fill="${header ? theme.boxStroke : theme.stroke}" ` +
-        `dominant-baseline="central">${esc}</text>`;
+    if (label) {
+        const esc = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Pin names sit against the right edge, at the pin they name; the
+        // header stays flush left.
+        const tx = header ? pad + Math.round(0.6 * ch) : pad + boxW - Math.round(0.6 * ch);
+        svg += `<text x="${tx}" y="${cy}" font-family="monospace" ` +
+            `font-size="${size}" fill="${header ? theme.boxStroke : theme.stroke}" ` +
+            `${header ? '' : 'text-anchor="end" '}dominant-baseline="central">${esc}</text>`;
+    }
     if (stub > 0) {
-        svg += `<line x1="${boxW}" y1="${cy}" x2="${w}" y2="${cy}" ` +
+        svg += `<line x1="${pad + boxW}" y1="${cy}" x2="${w}" y2="${cy}" ` +
             `stroke="${theme.wire}" stroke-width="${sw}"/>`;
     }
     return svgUri(w, h, svg);

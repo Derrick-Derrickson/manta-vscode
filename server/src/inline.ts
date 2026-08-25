@@ -64,6 +64,11 @@ export interface InlineFacts {
     headers: { span: InlineSpan; width: number }[];
     /** '.PIN' openers of bindings, drawn as the box's pin cells. */
     pins: { span: InlineSpan; width: number; last: boolean }[];
+    /** Box lines with no pin -- comments, blanks, continuations -- so the
+     *  column runs unbroken. `col` is the header's column. */
+    fillers: { line: number; col: number; width: number }[];
+    /** The '};' closing a boxed instance: hidden under the bottom cell. */
+    closers: { span: InlineSpan; width: number }[];
 }
 
 /** R1 -> resistor, C? -> capacitor ... anything else -> undefined. */
@@ -97,7 +102,8 @@ export function computeInline(
 ): InlineFacts {
     const { tokens, contentEnd } = tokenize(text);
     const facts: InlineFacts = { devices: [], joins: [], marks: [], dots: [],
-                                 equals: [], nets: [], headers: [], pins: [] };
+                                 equals: [], nets: [], headers: [], pins: [],
+                                 fillers: [], closers: [] };
 
     // Meaningful tokens only, stopping at the end-of-content marker.
     const ts: Token[] = [];
@@ -213,7 +219,7 @@ export function computeInline(
             const bindings = hasBindingList(j, close);
             const dev = handleDevice(j, close);
             if (bindings) {
-                if (dev < 0) recordBox(j, close);
+                recordBox(j, close, dev);
                 walkBindings(j + 1, close);
             }
             j = close + 1;
@@ -329,7 +335,7 @@ export function computeInline(
     // A non-passive instance with a binding list draws as a pin box: a
     // header cell for '{DES~PART:' and one yellow cell per '.PIN' opener,
     // all of one width so the column reads as a single body.
-    const recordBox = (open: number, close: number) => {
+    const recordBox = (open: number, close: number, dev: number) => {
         // The ':' that opens the binding list, at this brace's own depth.
         let colon = -1;
         let depth = 0;
@@ -368,6 +374,12 @@ export function computeInline(
             }
             atStart = false;
         }
+        // A recognised passive stays a drawn symbol unless it earns a box
+        // outright: two or more named pins is a part, whatever its letter --
+        // an RGB LED is a yellow part, a catch diode with one bound pin is a
+        // diode. Claiming the box un-claims the symbol.
+        const named = cells.filter((c) => c.name.length > 0).length;
+        if (dev >= 0 && named < 2) return;
         if (cells.length === 0) return;
 
         // The box only works as a column: the header opens its line and every
@@ -378,6 +390,7 @@ export function computeInline(
         if (!firstOnLine(open)) return;
         if (!cells.every((c) => firstOnLine(c.first)
                                 && ts[c.first].character >= ts[open].character)) return;
+        if (dev >= 0) facts.devices.splice(dev, 1);
 
         const headerLen = ts[colon].character + 1 - ts[open].character;
         const width = Math.max(headerLen - 2,
@@ -392,7 +405,26 @@ export function computeInline(
                 span: { line: ts[c.first].line, start: ts[open].character,
                         end: ts[c.last].character + ts[c.last].text.length },
                 width,
-                last: c === cells[cells.length - 1],
+                last: false,
+            });
+        }
+
+        // The column runs unbroken over comment, blank and continuation
+        // lines, and the bottom cell covers the closing '};'.
+        const col = ts[open].character;
+        const cellLines = new Set(cells.map((c) => ts[c.first].line));
+        const closeLine = ts[close].line;
+        for (let line = ts[open].line + 1; line < closeLine; line++) {
+            if (!cellLines.has(line)) facts.fillers.push({ line, col, width });
+        }
+        if (firstOnLine(close)) {
+            let end = ts[close].character + 1;
+            if (isPunct(close + 1, ';') && ts[close + 1].line === closeLine) {
+                end = ts[close + 1].character + 1;
+            }
+            facts.closers.push({
+                span: { line: closeLine, start: col, end },
+                width,
             });
         }
     };

@@ -33,6 +33,12 @@ export interface InlineDevice {
      *  element ('.{R5~part}.'), which full-sugar mode may collapse into one
      *  drawing carrying its own terminals, designator and value. */
     fullSpan?: InlineSpan;
+    /** Set for a shunt passive with exactly one binding: the head
+     *  ('.{C10~part:'), drawn like a full passive whose exit lead runs on
+     *  into the binding's chain. */
+    headSpan?: InlineSpan;
+    /** A diode drawn cathode-first: the entry terminal was 'K'. */
+    mirror?: boolean;
 }
 
 export interface InlineJoin {
@@ -58,8 +64,18 @@ export interface InlineFacts {
     dots: InlineSpan[];
     /** '='/'==' connector tokens, hidden entirely in full-sugar mode. */
     equals: InlineSpan[];
-    /** Chain net references, redrawn as names standing on the wire. */
-    nets: { span: InlineSpan; kind: 'plain' | 'ground' | 'rail' }[];
+    /** Chain net references, redrawn as names standing on the wire. `pos`
+     *  says which way the wire runs past them; `boxWidth` is set when the
+     *  net hangs off a pin box, for the document-wide label column. */
+    nets: { span: InlineSpan; kind: 'plain' | 'ground' | 'rail';
+            pos: 'start' | 'mid' | 'end'; boxWidth?: number }[];
+    /** Unrecognised parts used inline -- testpoints, crystals -- drawn as a
+     *  small yellow part box. */
+    parts: { span: InlineSpan; label: string; entry: boolean; exit: boolean }[];
+    /** Spans full sugar hides outright: shunt tails, binding-row gaps. */
+    hides: InlineSpan[];
+    /** The widest pin box in the document, for the label column. */
+    boxCol: number;
     /** '{DES~PART:' opens of instances drawn as a pin box. */
     headers: { span: InlineSpan; width: number }[];
     /** '.PIN' openers of bindings, drawn as the box's pin cells. */
@@ -103,7 +119,8 @@ export function computeInline(
     const { tokens, contentEnd } = tokenize(text);
     const facts: InlineFacts = { devices: [], joins: [], marks: [], dots: [],
                                  equals: [], nets: [], headers: [], pins: [],
-                                 fillers: [], closers: [] };
+                                 fillers: [], closers: [], parts: [], hides: [],
+                                 boxCol: 0 };
 
     // Meaningful tokens only, stopping at the end-of-content marker.
     const ts: Token[] = [];
@@ -218,6 +235,9 @@ export function computeInline(
             if (close < 0) return null;
             const bindings = hasBindingList(j, close);
             const dev = handleDevice(j, close);
+            // The name of a named entry terminal ('K.{D2'), for orientation.
+            const entryName = first < j && isWord(j - 2) && isPunct(j - 1, '.')
+                ? ts[j - 2].text : '';
             if (bindings) {
                 recordBox(j, close, dev);
                 walkBindings(j + 1, close);
@@ -241,16 +261,74 @@ export function computeInline(
                     while (isPunct(j, '.')) { facts.dots.push(spanOf(ts[j++])); exitDots++; }
                 }
             }
-            // A pure passthrough passive -- '.{R5~part}.' on one line, no
-            // binding list -- collapses whole: the drawing carries its own
-            // terminals, designator and value.
-            if (dev >= 0 && !bindings && entryDots === 1 && exitDots === 1 && !exitNamed
-                && ts[first].line === ts[j - 1].line && first === i) {
-                facts.devices[dev].fullSpan = {
-                    line: ts[first].line,
-                    start: ts[first].character,
-                    end: ts[j - 1].character + ts[j - 1].text.length,
-                };
+            const oneLine = ts[first].line === ts[j - 1].line;
+            const elementSpan = (): InlineSpan => ({
+                line: ts[first].line,
+                start: ts[first].character,
+                end: ts[j - 1].character + ts[j - 1].text.length,
+            });
+
+            // A passthrough passive with no binding list collapses whole:
+            // the drawing carries its own terminals, designator and value.
+            // Named terminals qualify too -- a diode entered at K draws
+            // cathode-first.
+            if (dev >= 0 && !bindings && oneLine
+                && (entryDots === 1 || entryName !== '')) {
+                facts.devices[dev].fullSpan = elementSpan();
+                if (entryName.toUpperCase() === 'K') facts.devices[dev].mirror = true;
+            }
+
+            // A shunt passive with exactly one binding collapses its head --
+            // '.{C10~part:' -- and hides its tail, so the drawing's exit lead
+            // runs on into the binding's chain (the cap to its ground).
+            if (dev >= 0 && bindings && oneLine && facts.devices[dev] !== undefined) {
+                const colon = colonOf(ts, close, (k, p) => isPunct(k, p));
+                const bindingCount = countBindings(colon, close);
+                if (colon >= 0 && bindingCount === 1 && ts[colon].line === ts[first].line) {
+                    facts.devices[dev].headSpan = {
+                        line: ts[first].line,
+                        start: ts[first].character,
+                        end: ts[colon].character + 1,
+                    };
+                    if (entryName.toUpperCase() === 'K') facts.devices[dev].mirror = true;
+                    // Hide the tail: an inner ';' hugging the '}' and the
+                    // '}' itself.
+                    let tailStart = close;
+                    if (isPunct(close - 1, ';') && ts[close - 1].line === ts[close].line) {
+                        tailStart = close - 1;
+                    }
+                    facts.hides.push({
+                        line: ts[close].line, start: ts[tailStart].character,
+                        end: ts[close].character + 1,
+                    });
+                    // Hide the binding's opener ('.' or '.A'): the drawing's
+                    // exit lead stands for that pin, and the chain after it
+                    // runs on into the sugar.
+                    let b = colon + 1;
+                    if (isPunct(b, '.')) {
+                        let e = b;
+                        if (isWord(b + 1) && ts[b + 1].line === ts[b].line) e = b + 1;
+                        // From just after the ':' so the gap before the
+                        // opener vanishes too -- the wire stays unbroken.
+                        facts.hides.push({ line: ts[b].line,
+                                           start: ts[colon].character + 1,
+                                           end: ts[e].character + ts[e].text.length });
+                    }
+                }
+            }
+
+            // An unrecognised part used inline -- a testpoint, a crystal --
+            // draws as a small yellow part box with its designator and part.
+            if (dev < 0 && !bindings && oneLine) {
+                const label = partLabel(j0Open(ts, first, i), close);
+                if (label) {
+                    facts.parts.push({
+                        span: elementSpan(),
+                        label,
+                        entry: entryDots > 0 || entryName !== '',
+                        exit: exitDots > 0 || exitNamed,
+                    });
+                }
             }
             return { first, last: j - 1 };
         }
@@ -290,6 +368,7 @@ export function computeInline(
                     span: { line: ts[nameFirst].line, start: ts[nameFirst].character,
                             end: ts[j - 1].character + ts[j - 1].text.length },
                     kind: isGroundName(name) ? 'ground' : isRailName(name) ? 'rail' : 'plain',
+                    pos: 'end',
                 });
             }
             // Trailing arrows.
@@ -429,6 +508,59 @@ export function computeInline(
         }
     };
 
+    // The ':' opening a binding list, at the brace's own depth; -1 if none.
+    const colonOf = (_ts: Token[], close: number,
+                     isP: (k: number, p: string) => boolean): number => {
+        let depth = 0;
+        for (let k = openOf(close) + 1; k < close; k++) {
+            if (isP(k, '{')) depth++;
+            else if (isP(k, '}')) depth--;
+            else if (depth === 0 && isP(k, ':')) return k;
+        }
+        return -1;
+    };
+    // The '{' matching a ')'-style close index: scan back.
+    const openOf = (close: number): number => {
+        let depth = 0;
+        for (let k = close; k >= 0; k--) {
+            if (isPunct(k, '}')) depth++;
+            else if (isPunct(k, '{') && --depth === 0) return k;
+        }
+        return 0;
+    };
+    // Top-level ';'-separated bindings after the colon.
+    const countBindings = (colon: number, close: number): number => {
+        if (colon < 0) return 0;
+        let depth = 0;
+        let count = 0;
+        let sawContent = false;
+        for (let k = colon + 1; k < close; k++) {
+            if (isPunct(k, '{')) depth++;
+            else if (isPunct(k, '}')) depth--;
+            else if (depth === 0 && isPunct(k, ';')) { if (sawContent) count++; sawContent = false; }
+            else if (depth === 0) sawContent = true;
+        }
+        if (sawContent) count++;
+        return count;
+    };
+    // "DES PART" for the instance whose '{' follows element start.
+    const j0Open = (_ts: Token[], _first: number, i: number): number => {
+        for (let k = i; k < ts.length; k++) if (isPunct(k, '{')) return k;
+        return i;
+    };
+    const partLabel = (open: number, close: number): string => {
+        let k = open + 1;
+        if (isPunct(k, '!')) k++;
+        if (!isWord(k)) return '';
+        let label = ts[k].text;
+        k++;
+        if (isPunct(k, '?')) { label += '?'; k++; }
+        if (isPunct(k, '~') && isWord(k + 1) && k + 1 < close) {
+            label += ' ' + ts[k + 1].text;
+        }
+        return label;
+    };
+
     // Whether an instance carries a binding list: a ':' at its own depth.
     const hasBindingList = (open: number, close: number): boolean => {
         let depth = 0;
@@ -495,8 +627,18 @@ export function computeInline(
                 }
                 continue;
             }
+            const netsBefore = facts.nets.length;
             const el = parseElement(j);
             if (el !== null) {
+                // A net element just parsed learns which way its wire runs:
+                // arrived-from-left, continues-right, or both.
+                if (facts.nets.length > netsBefore) {
+                    const n = facts.nets[facts.nets.length - 1];
+                    const continues =
+                        ['=', '==', '=*', '*='].some((p) => isPunct(el.last + 1, p));
+                    const arrived = prev !== null;
+                    n.pos = arrived && continues ? 'mid' : continues ? 'start' : 'end';
+                }
                 prev = el;
                 j = el.last + 1;
             } else {
@@ -520,10 +662,31 @@ export function computeInline(
         walkChain(j + 1, end);
     };
 
+    // Binding rows join the document-wide label column: the widest pin box
+    // sets the column, the gap from the pin cell to its net hides, and the
+    // net remembers its box's width so the client can pad the difference.
+    const alignColumns = () => {
+        facts.boxCol = Math.max(0, ...facts.headers.map((hd) => hd.width));
+        for (const p of facts.pins) {
+            let best: (typeof facts.nets)[number] | undefined;
+            for (const n of facts.nets) {
+                if (n.span.line !== p.span.line || n.span.start < p.span.end) continue;
+                if (!best || n.span.start < best.span.start) best = n;
+            }
+            if (!best) continue;
+            best.boxWidth = p.width;
+            if (best.span.start > p.span.end) {
+                facts.hides.push({ line: p.span.line, start: p.span.end,
+                                   end: best.span.start });
+            }
+        }
+    };
+
     // Top level: split into statements at ';' and walk each. Declarations
     // (part/block/...) recurse naturally: their braces are walked for chains,
     // and part bodies contain no connectors that survive the annotation skip.
     walkChain(0, ts.length);
+    alignColumns();
 
     return facts;
 }

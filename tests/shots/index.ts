@@ -34,9 +34,22 @@ export async function run(): Promise<void> {
     await sleep(9000);
     execSync(`import -window root ${resolve(out, 'dark.png')}`);
 
+    // A second frame from the top of the file catches the earlier lines.
+    editor.revealRange(new vscode.Range(0, 0, 0, 0),
+                       vscode.TextEditorRevealType.AtTop);
+    await sleep(1500);
+    execSync(`import -window root ${resolve(out, 'dark-top.png')}`);
+    editor.revealRange(new vscode.Range(26, 0, 26, 0),
+                       vscode.TextEditorRevealType.AtTop);
+    await sleep(1500);
+    execSync(`import -window root ${resolve(out, 'dark-mid.png')}`);
+
     await config.update('workbench.colorTheme', 'Default Light Modern',
                         vscode.ConfigurationTarget.Global);
     await sleep(3000);
+    execSync(`import -window root ${resolve(out, 'light-top.png')}`);
+    editor.revealRange(new vscode.Range(doc.lineCount - 1, 0, doc.lineCount - 1, 0));
+    await sleep(1500);
     execSync(`import -window root ${resolve(out, 'light.png')}`);
 
     await config.update('workbench.colorTheme', 'Default Dark Modern',

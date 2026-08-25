@@ -178,7 +178,8 @@
     },
     "configurationDefaults": {
       "[manta]": {
-        "editor.lineHeight": 1.9
+        "editor.lineHeight": 1.9,
+        "editor.guides.indentation": false
       }
     }
   },

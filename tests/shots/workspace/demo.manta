@@ -7,6 +7,8 @@ part L-4u7H { @~footprint = L-5x5; #value = 4u7H; 1: A; 2: B; };
 part D-SS34 { @~footprint = SOD-123; 1: A; 2: K; };
 part LED-RED { @~footprint = LED-0603; #value = red; 1: A; 2: K; };
 part LED-RGB-CA { @~footprint = PLCC-4; 1: A; 2: R; 3: G; 4: B; };
+part CRYSTAL-8MHZ { @~footprint = HC49; 1: X1 &CASUAL; 2: X2 &CASUAL; };
+part TESTPOINT { @~footprint = TP-1MM; 1: T &CASUAL; };
 part MP1584 { @~footprint = SOIC-8; 1: VIN<; 2: SW>; 3: BST<; 4: FB<; 5: EN<; 6: GND< &TYPE=POWER &~NET=GND; };
 
 block showcase {
@@ -34,6 +36,14 @@ block showcase {
         .EN  = .{R5~R-100kR-0603}. = VSYS-PROT;
         .GND = GND;
     };
+
+    // Shunt caps draw whole: cap, labels, line through to ground.
+    NRST = .{C10~C-100nF-0603: . = GND;};
+
+    // Unrecognised parts inline: a crystal and testpoints.
+    XTAL-IN = .{Y1~CRYSTAL-8MHZ}. = XTAL-OUT;
+    3V3 = .{TP1~TESTPOINT};
+    GND = .{TP2~TESTPOINT};
 
     // A multi-pin LED is a part, not a diode.
     {D9~LED-RGB-CA:

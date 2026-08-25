@@ -74,19 +74,21 @@ export function calibrationIcon(fontSize: number): vscode.Uri {
 }
 
 interface Canvas { h: number; cy: number; sw: number; ch: number; }
+export const kWire = 1.4;
 function canvasFor(fontSize: number): Canvas {
     const h = Math.round(fontSize * 1.8);
     return {
         h,
         cy: Math.round(h - fontSize * 0.30) - iconDrop(fontSize),
-        sw: Math.max(1.2, fontSize / 12),
+        sw: kWire,
         ch: cellWidth(fontSize),
     };
 }
 
 /** The bare symbol body, drawn about (cx, cy); returns its half-width. */
 function symbolBody(kind: string, cx: number, cy: number, fontSize: number,
-                    theme: SymbolTheme, sw: number): { body: string; halfW: number } {
+                    theme: SymbolTheme, sw: number,
+                    mirror = false): { body: string; halfW: number } {
     const stroke = `stroke="${theme.stroke}" stroke-width="${sw}" fill="none"`;
     const ch = cellWidth(fontSize);
     switch (kind) {
@@ -112,18 +114,19 @@ function symbolBody(kind: string, cx: number, cy: number, fontSize: number,
                 `<line x1="${cx - gap / 2}" y1="${cy - up}" x2="${cx - gap / 2}" y2="${cy + up}" ${stroke}/>` +
                 `<line x1="${cx + gap / 2}" y1="${cy - up}" x2="${cx + gap / 2}" y2="${cy + up}" ${stroke}/>` };
         }
-        default: {  // diode / led
+        default: {  // diode / led; mirror = cathode toward the entry
             const half = Math.round(fontSize * 0.42);
             const triW = Math.round(1.2 * ch);
-            const x0 = cx - triW / 2;
-            const x1 = cx + triW / 2;
+            const m = mirror ? -1 : 1;
+            const x0 = cx - m * triW / 2;
+            const x1 = cx + m * triW / 2;
             let body =
                 `<path d="M ${x0} ${cy - half} L ${x1} ${cy} L ${x0} ${cy + half} Z" ` +
                 `stroke="${theme.stroke}" stroke-width="${sw}" fill="${theme.stroke}"/>` +
                 `<line x1="${x1}" y1="${cy - half}" x2="${x1}" y2="${cy + half}" ${stroke}/>`;
             if (kind === 'led') {
-                body += `<path d="M ${x0 + 2} ${cy - half - 1} l 3 -3 m -3 0 l 3 0 l 0 3" ` +
-                    `${stroke} transform="rotate(-15 ${x0 + 2} ${cy - half - 1})"/>`;
+                body += `<path d="M ${x0 + 2 * m} ${cy - half - 1} l 3 -3 m -3 0 l 3 0 l 0 3" ` +
+                    `${stroke} transform="rotate(-15 ${x0 + 2 * m} ${cy - half - 1})"/>`;
             }
             return { halfW: triW / 2 + sw, body };
         }
@@ -135,7 +138,8 @@ function symbolBody(kind: string, cx: number, cy: number, fontSize: number,
  * designator above the line and the value below it.
  */
 export function passiveFullIcon(kind: string, designator: string, value: string,
-                                fontSize: number, theme: SymbolTheme): vscode.Uri {
+                                fontSize: number, theme: SymbolTheme,
+                                mirror = false): vscode.Uri {
     const { h, cy, sw, ch } = canvasFor(fontSize);
     const labelSize = Math.round(fontSize * 0.68);
     const labelW = Math.max(designator.length, value.length) * labelSize * 0.62;
@@ -144,7 +148,7 @@ export function passiveFullIcon(kind: string, designator: string, value: string,
     const cx = entry + symHalf;
     const exitW = Math.max(Math.round(2.5 * ch), Math.round(labelW + ch));
     const w = Math.round(cx + symHalf + exitW);
-    const { body } = symbolBody(kind, cx, cy, fontSize, theme, sw);
+    const { body } = symbolBody(kind, cx, cy, fontSize, theme, sw, mirror);
     const lead = (x1: number, x2: number) =>
         `<line x1="${x1}" y1="${cy}" x2="${x2}" y2="${cy}" stroke="${theme.wire}" ` +
         `stroke-width="${sw}"/>`;
@@ -160,7 +164,9 @@ export function passiveFullIcon(kind: string, designator: string, value: string,
 /** A chain net reference re-drawn on the wire: the name above the line, a
  *  ground drop below it, or a rail tick, per kind. */
 export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
-                             fontSize: number, theme: SymbolTheme): vscode.Uri {
+                             fontSize: number, theme: SymbolTheme,
+                             pos: 'start' | 'mid' | 'end' = 'end',
+                             leadCh = 0): vscode.Uri {
     const { h, cy, sw, ch } = canvasFor(fontSize);
     const labelSize = Math.round(fontSize * 0.7);
     const textW = Math.round(name.length * labelSize * 0.62) + 4;
@@ -169,25 +175,36 @@ export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
         `stroke-width="${sw}"/>`;
     const stroke = `stroke="${theme.stroke}" stroke-width="${sw}" fill="none"`;
 
+    const pad = Math.round(leadCh * ch);
     if (kind === 'ground') {
-        // The drop sits where the wire lands -- flush with the connecting
-        // net -- and the name stands beside it at wire height.
-        const gx = 6;
-        const w = gx + 8 + textW;
         const y0 = cy + Math.round(fontSize * 0.16);
-        let svg = lead(0, gx) +
+        const bars = (gx: number) =>
             `<line x1="${gx}" y1="${cy}" x2="${gx}" y2="${y0}" ${stroke}/>` +
             `<line x1="${gx - 5}" y1="${y0}" x2="${gx + 5}" y2="${y0}" ${stroke}/>` +
             `<line x1="${gx - 3}" y1="${y0 + 3}" x2="${gx + 3}" y2="${y0 + 3}" ${stroke}/>` +
             `<line x1="${gx - 1}" y1="${y0 + 6}" x2="${gx + 1}" y2="${y0 + 6}" ${stroke}/>`;
-        svg += textEl(gx + 8 + textW / 2, cy, labelSize, theme.label, name);
+        if (pos === 'end') {
+            // Wire arrives from the left; the drop sits where it lands and
+            // the name stands beside it at wire height.
+            const gx = pad + 6;
+            const w = gx + 8 + textW;
+            return svgUri(w, h, lead(0, gx) + bars(gx)
+                + textEl(gx + 8 + textW / 2, cy, labelSize, theme.label, name));
+        }
+        // The wire leaves to the right: the name stands on the far side, the
+        // symbol connects through -- mid keeps a lead on both flanks.
+        const gx = textW + 10;
+        const w = gx + Math.round(1.4 * ch);
+        let svg = bars(gx) + lead(gx, w)
+            + textEl(textW / 2 + 2, cy, labelSize, theme.label, name);
+        if (pos === 'mid') svg = lead(0, 4) + svg;
         return svgUri(w, h, svg);
     }
 
-    const w = Math.max(textW + 4, Math.round(1.5 * ch));
+    const w = pad + Math.max(textW + 4, Math.round(1.5 * ch));
     let svg = lead(0, w);
     if (kind === 'rail') {
-        const ax = 4;
+        const ax = pad + 4;
         const top = cy - Math.round(fontSize * 0.85);
         svg += `<line x1="${ax}" y1="${cy}" x2="${ax}" y2="${top + 3}" ${stroke}/>` +
             `<path d="M ${ax - 3} ${top + 4} L ${ax} ${top} L ${ax + 3} ${top + 4} Z" ` +
@@ -195,9 +212,48 @@ export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
         svg += textEl(ax + 4 + (w - ax - 4) / 2, cy - Math.round(fontSize * 0.42),
                       labelSize, theme.label, name);
     } else {
-        svg += textEl(w / 2, cy - Math.round(fontSize * 0.42), labelSize, theme.label, name);
+        svg += textEl(pad + (w - pad) / 2, cy - Math.round(fontSize * 0.42),
+                      labelSize, theme.label, name);
     }
     return svgUri(w, h, svg);
+}
+
+/** An unrecognised part used inline: a small yellow box carrying its
+ *  designator and part name, with wire leads for its written terminals. */
+export function partBoxIcon(label: string, entry: boolean, exit: boolean,
+                            fontSize: number, theme: SymbolTheme): vscode.Uri {
+    const { h, cy, sw, ch } = canvasFor(fontSize);
+    const size = Math.round(fontSize * 0.72);
+    const boxW = Math.round(label.length * size * 0.64) + Math.round(1.2 * ch);
+    const boxH = Math.round(fontSize * 1.15);
+    const leadW = Math.round(1.2 * ch);
+    const x0 = entry ? leadW : 0;
+    const w = x0 + boxW + (exit ? leadW : 0);
+    const boxY = cy - Math.round(boxH * 0.62);
+    const wireLine = (a: number, b: number) =>
+        `<line x1="${a}" y1="${cy}" x2="${b}" y2="${cy}" stroke="${theme.wire}" ` +
+        `stroke-width="${sw}"/>`;
+    let svg = '';
+    if (entry) svg += wireLine(0, x0);
+    if (exit) svg += wireLine(x0 + boxW, w);
+    svg += `<rect x="${x0 + sw / 2}" y="${boxY}" width="${boxW - sw}" height="${boxH}" ` +
+        `fill="${theme.boxFill}" stroke="${theme.boxStroke}" stroke-width="${sw}"/>`;
+    const esc = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    svg += `<text x="${x0 + boxW / 2}" y="${boxY + boxH / 2}" font-family="monospace" ` +
+        `font-size="${size}" fill="${theme.boxStroke}" text-anchor="middle" ` +
+        `dominant-baseline="central">${esc}</text>`;
+    return svgUri(w, h, svg);
+}
+
+/** A junction: a filled dot on its own piece of wire, so the line never
+ *  breaks around it. */
+export function dotIcon(fontSize: number, theme: SymbolTheme): vscode.Uri {
+    const { h, cy, sw, ch } = canvasFor(fontSize);
+    const w = ch; // exactly the advance of the character it stands in for
+    return svgUri(w, h,
+        `<line x1="0" y1="${cy}" x2="${w}" y2="${cy}" stroke="${theme.wire}" ` +
+        `stroke-width="${sw}"/>` +
+        `<circle cx="${w / 2}" cy="${cy}" r="2.2" fill="${theme.stroke}"/>`);
 }
 
 /** One cell of the yellow instance pin box: the header carries the
@@ -213,7 +269,7 @@ export function pinCellIcon(label: string, widthCh: number, role: CellRole,
     // reads as one body.
     const h = Math.round(fontSize * 1.9) + 2;
     const cy = Math.round(h - fontSize * 0.30) - iconDrop(fontSize) - 2;
-    const sw = Math.max(1.2, fontSize / 12);
+    const sw = kWire;
     const pad = Math.round(padCh * ch);
     const boxW = Math.round(widthCh * ch);
     const stub = role === 'pin' ? Math.round(1.2 * ch) : 0;
@@ -265,7 +321,7 @@ export function deviceIcon(kind: string, value: string, fontSize: number,
     // symbols can centre on it like parts on a schematic.
     const h = Math.round(fontSize * 1.8);
     const cy = Math.round(h - fontSize * 0.30) - iconDrop(fontSize);
-    const sw = Math.max(1.2, fontSize / 12);
+    const sw = kWire;
     const stroke = `stroke="${theme.stroke}" stroke-width="${sw}" fill="none"`;
     const lead = (x1: number, x2: number) =>
         `<line x1="${x1}" y1="${cy}" x2="${x2}" y2="${cy}" stroke="${theme.wire}" ` +

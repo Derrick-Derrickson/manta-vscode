@@ -9,6 +9,8 @@ part LED-RED { @~footprint = LED-0603; #value = red; 1: A; 2: K; };
 part LED-RGB-CA { @~footprint = PLCC-4; 1: A; 2: R; 3: G; 4: B; };
 part CRYSTAL-8MHZ { @~footprint = HC49; 1: X1 &CASUAL; 2: X2 &CASUAL; };
 part TESTPOINT { @~footprint = TP-1MM; 1: T &CASUAL; };
+part SN74LV1T34 { @~footprint = SC70-5; 1: A<; 2: GND<; 3: Y>; 4: VCC<; };
+part CONN-ZH15-2P { @~footprint = ZH-2; 1: P[1]; 2: P[2]; };
 part MP1584 { @~footprint = SOIC-8; 1: VIN<; 2: SW>; 3: BST<; 4: FB<; 5: EN<; 6: GND< &TYPE=POWER &~NET=GND; };
 
 block showcase {
@@ -44,6 +46,16 @@ block showcase {
     XTAL-IN = .{Y1~CRYSTAL-8MHZ}. = XTAL-OUT;
     3V3 = .{TP1~TESTPOINT};
     GND = .{TP2~TESTPOINT};
+
+    // An entry-connected buffer: the chain reaches the box at VCC.
+    5V = VCC.{U8~SN74LV1T34:
+        .A   = LVL-IN;
+        .Y   = LVL-OUT;
+        .GND = GND;
+    };
+
+    // A one-line connector: yellow chips for the part and its pins.
+    {J5~CONN-ZH15-2P: .P[1] = MOTOR-OUT1; .P[2] = MOTOR-OUT2;};
 
     // A multi-pin LED is a part, not a diode.
     {D9~LED-RGB-CA:

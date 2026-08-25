@@ -37,8 +37,12 @@ export interface InlineDevice {
      *  ('.{C10~part:'), drawn like a full passive whose exit lead runs on
      *  into the binding's chain. */
     headSpan?: InlineSpan;
-    /** A diode drawn cathode-first: the entry terminal was 'K'. */
+    /** A diode drawn cathode-first: the entry terminal was 'K' (or the
+     *  exit terminal was 'A'). */
     mirror?: boolean;
+    /** Set on a collapsed head hopped by '==': the drawing carries the
+     *  riser and top line of the up-and-over bypass. */
+    hop?: boolean;
 }
 
 export interface InlineJoin {
@@ -49,6 +53,10 @@ export interface InlineJoin {
      * element it hops -- up and over the part.
      */
     over: boolean;
+    /** Full-sugar hop rendering: 'span' covers the hopped element (wire
+     *  plus top line), 'mid' is a join inside it (same), 'tail' the plain
+     *  wire from the element to what follows. */
+    hop?: 'span' | 'mid' | 'tail';
 }
 
 export interface InlineMark {
@@ -60,15 +68,17 @@ export interface InlineFacts {
     devices: InlineDevice[];
     joins: InlineJoin[];
     marks: InlineMark[];
-    /** Terminal dots -- '.' tokens standing on a wire -- drawn mid-height. */
-    dots: InlineSpan[];
+    /** Terminal dots -- '.' tokens standing on a wire -- drawn mid-height.
+     *  `over` marks dots inside a hopped element: the top line runs over. */
+    dots: (InlineSpan & { over?: boolean })[];
     /** '='/'==' connector tokens, hidden entirely in full-sugar mode. */
     equals: InlineSpan[];
     /** Chain net references, redrawn as names standing on the wire. `pos`
      *  says which way the wire runs past them; `boxWidth` is set when the
      *  net hangs off a pin box, for the document-wide label column. */
     nets: { span: InlineSpan; kind: 'plain' | 'ground' | 'rail';
-            pos: 'start' | 'mid' | 'end'; boxWidth?: number }[];
+            pos: 'start' | 'mid' | 'end'; boxWidth?: number;
+            hop?: 'mid' | 'end' }[];
     /** Unrecognised parts used inline -- testpoints, crystals -- drawn as a
      *  small yellow part box. */
     parts: { span: InlineSpan; label: string; entry: boolean; exit: boolean }[];
@@ -76,15 +86,19 @@ export interface InlineFacts {
     hides: InlineSpan[];
     /** The widest pin box in the document, for the label column. */
     boxCol: number;
-    /** '{DES~PART:' opens of instances drawn as a pin box. */
-    headers: { span: InlineSpan; width: number }[];
-    /** '.PIN' openers of bindings, drawn as the box's pin cells. */
-    pins: { span: InlineSpan; width: number; last: boolean }[];
+    /** '{DES~PART:' opens of instances drawn as a pin box. `entry` names
+     *  the entry-connected pin when the chain reaches the box from a net. */
+    headers: { span: InlineSpan; width: number; label: string;
+               entry?: string }[];
+    /** '.PIN' openers of bindings, drawn as the box's pin cells. `pad`
+     *  shifts a cell right when its row sits left of the box column. */
+    pins: { span: InlineSpan; width: number; last: boolean; pad?: number }[];
     /** Box lines with no pin -- comments, blanks, continuations -- so the
      *  column runs unbroken. `col` is the header's column. */
     fillers: { line: number; col: number; width: number }[];
-    /** The '};' closing a boxed instance: hidden under the bottom cell. */
-    closers: { span: InlineSpan; width: number }[];
+    /** The '};' closing a boxed instance: hidden under the bottom cell.
+     *  `pad` shifts it right when the text sits left of the box column. */
+    closers: { span: InlineSpan; width: number; pad?: number }[];
 }
 
 /** R1 -> resistor, C? -> capacitor ... anything else -> undefined. */
@@ -239,19 +253,21 @@ export function computeInline(
             const entryName = first < j && isWord(j - 2) && isPunct(j - 1, '.')
                 ? ts[j - 2].text : '';
             if (bindings) {
-                recordBox(j, close, dev);
+                recordBox(j, close, dev, first, entryName);
                 walkBindings(j + 1, close);
             }
             j = close + 1;
             // Exit terminal: '.', '.NAME', '.[list]', or a dot run.
             let exitDots = 0;
             let exitNamed = false;
+            let exitName = '';
             if (isPunct(j, '.')) {
                 facts.dots.push(spanOf(ts[j]));
                 exitDots++;
                 j++;
                 if (isWord(j)) {
                     exitNamed = true;
+                    exitName = ts[j].text;
                     j++;
                     if (isPunct(j, '[')) j = matchClose(j - 0, '[', ']') + 1;
                 } else if (isPunct(j, '[')) {
@@ -275,7 +291,8 @@ export function computeInline(
             if (dev >= 0 && !bindings && oneLine
                 && (entryDots === 1 || entryName !== '')) {
                 facts.devices[dev].fullSpan = elementSpan();
-                if (entryName.toUpperCase() === 'K') facts.devices[dev].mirror = true;
+                if (entryName.toUpperCase() === 'K'
+                    || exitName.toUpperCase() === 'A') facts.devices[dev].mirror = true;
             }
 
             // A shunt passive with exactly one binding collapses its head --
@@ -313,6 +330,59 @@ export function computeInline(
                         facts.hides.push({ line: ts[b].line,
                                            start: ts[colon].character + 1,
                                            end: ts[e].character + ts[e].text.length });
+                    }
+                }
+            }
+
+            // A single-line instance with a binding list -- a connector, an
+            // addressed LED -- draws as a yellow chip for the part plus one
+            // chip per named pin, each wired on to its net. (A passive with
+            // exactly one binding collapsed above instead.)
+            if (bindings && oneLine) {
+                const colon2 = colonOf(ts, close, (k, p) => isPunct(k, p));
+                const nBind = countBindings(colon2, close);
+                if (colon2 >= 0 && !(dev >= 0 && nBind === 1)) {
+                    const label = partLabel(j0Open(ts, first, i), close);
+                    if (label) {
+                        facts.parts.push({
+                            span: { line: ts[first].line, start: ts[first].character,
+                                    end: ts[colon2].character + 1 },
+                            label,
+                            entry: entryDots > 0 || entryName !== '',
+                            exit: false,
+                        });
+                        let depth2 = 0;
+                        let atStart2 = true;
+                        for (let k = colon2 + 1; k < close; k++) {
+                            if (isPunct(k, '{')) { depth2++; atStart2 = false; continue; }
+                            if (isPunct(k, '}')) { depth2--; atStart2 = false; continue; }
+                            if (depth2 > 0) continue;
+                            if (isPunct(k, ';')) { atStart2 = true; continue; }
+                            if (atStart2 && isPunct(k, '.') && isWord(k + 1)
+                                && ts[k + 1].line === ts[k].line) {
+                                let e = k + 1;
+                                let name = ts[e].text;
+                                if (isPunct(e + 1, '[')) {
+                                    const rb = matchClose(e + 1, '[', ']');
+                                    if (rb >= 0 && ts[rb].line === ts[k].line) {
+                                        name += ts.slice(e + 1, rb + 1)
+                                            .map((t) => t.text).join('');
+                                        e = rb;
+                                    }
+                                }
+                                facts.parts.push({
+                                    span: { line: ts[k].line, start: ts[k].character,
+                                            end: ts[e].character + ts[e].text.length },
+                                    label: name, entry: false, exit: true,
+                                });
+                            }
+                            atStart2 = false;
+                        }
+                        if (dev >= 0 && facts.devices[dev] !== undefined
+                            && facts.devices[dev].headSpan === undefined
+                            && facts.devices[dev].fullSpan === undefined) {
+                            facts.devices.splice(dev, 1);
+                        }
                     }
                 }
             }
@@ -414,7 +484,8 @@ export function computeInline(
     // A non-passive instance with a binding list draws as a pin box: a
     // header cell for '{DES~PART:' and one yellow cell per '.PIN' opener,
     // all of one width so the column reads as a single body.
-    const recordBox = (open: number, close: number, dev: number) => {
+    const recordBox = (open: number, close: number, dev: number,
+                       first: number, entryName: string) => {
         // The ':' that opens the binding list, at this brace's own depth.
         let colon = -1;
         let depth = 0;
@@ -461,36 +532,42 @@ export function computeInline(
         if (dev >= 0 && named < 2) return;
         if (cells.length === 0) return;
 
-        // The box only works as a column: the header opens its line and every
-        // pin opens its own. Each cell then swallows its indent back to the
-        // header's column, so the drawn edges align.
+        // The box only works as a column: every pin opens its own line (a
+        // one-line list draws as chips instead). Cells left of the box
+        // column pad right to it; deeper ones swallow their indent back.
         const firstOnLine = (k: number) =>
             k === 0 || ts[k - 1].line !== ts[k].line;
-        if (!firstOnLine(open)) return;
-        if (!cells.every((c) => firstOnLine(c.first)
-                                && ts[c.first].character >= ts[open].character)) return;
+        if (cells.every((c) => ts[c.first].line === ts[open].line)) return;
+        if (!cells.every((c) => firstOnLine(c.first))) return;
         if (dev >= 0) facts.devices.splice(dev, 1);
 
+        const col = ts[first].character;
+        const hasEntry = first < open;
+        const label = partLabel(open, close);
         const headerLen = ts[colon].character + 1 - ts[open].character;
         const width = Math.max(headerLen - 2,
+                               hasEntry ? label.length + entryName.length + 3 : 0,
                                ...cells.map((c) => c.name.length + 2));
         facts.headers.push({
-            span: { line: ts[open].line, start: ts[open].character,
+            span: { line: ts[open].line, start: col,
                     end: ts[colon].character + 1 },
             width,
+            label,
+            ...(hasEntry ? { entry: entryName } : {}),
         });
         for (const c of cells) {
+            const rowCol = ts[c.first].character;
             facts.pins.push({
-                span: { line: ts[c.first].line, start: ts[open].character,
+                span: { line: ts[c.first].line, start: Math.min(col, rowCol),
                         end: ts[c.last].character + ts[c.last].text.length },
                 width,
                 last: false,
+                ...(rowCol < col ? { pad: col - rowCol } : {}),
             });
         }
 
         // The column runs unbroken over comment, blank and continuation
         // lines, and the bottom cell covers the closing '};'.
-        const col = ts[open].character;
         const cellLines = new Set(cells.map((c) => ts[c.first].line));
         const closeLine = ts[close].line;
         for (let line = ts[open].line + 1; line < closeLine; line++) {
@@ -501,9 +578,11 @@ export function computeInline(
             if (isPunct(close + 1, ';') && ts[close + 1].line === closeLine) {
                 end = ts[close + 1].character + 1;
             }
+            const closeCol = ts[close].character;
             facts.closers.push({
-                span: { line: closeLine, start: col, end },
+                span: { line: closeLine, start: Math.min(col, closeCol), end },
                 width,
+                ...(closeCol < col ? { pad: col - closeCol } : {}),
             });
         }
     };
@@ -579,6 +658,33 @@ export function computeInline(
     const walkChain = (i: number, end: number) => {
         let j = i;
         let prev: Extent | null = null;
+        // What the previous element pushed, so a following '==' can mark it
+        // hopped: the drawing then carries the up-and-over bypass.
+        interface Marks { d0: number; d1: number; n0: number; n1: number;
+                          t0: number; t1: number; j0: number; j1: number; }
+        let prevMarks: Marks | null = null;
+        const snap = (): Marks => ({
+            d0: facts.devices.length, d1: 0, n0: facts.nets.length, n1: 0,
+            t0: facts.dots.length, t1: 0, j0: facts.joins.length, j1: 0 });
+        const seal = (m: Marks): Marks => {
+            m.d1 = facts.devices.length; m.n1 = facts.nets.length;
+            m.t1 = facts.dots.length; m.j1 = facts.joins.length;
+            return m;
+        };
+        const markHop = (m: Marks) => {
+            for (let k = m.d0; k < m.d1; k++) {
+                const d = facts.devices[k];
+                if (d !== undefined && d.headSpan !== undefined) d.hop = true;
+            }
+            for (let k = m.n0; k < m.n1; k++) {
+                facts.nets[k].hop = k === m.n1 - 1 ? 'end' : 'mid';
+            }
+            for (let k = m.t0; k < m.t1; k++) facts.dots[k].over = true;
+            for (let k = m.j0; k < m.j1; k++) {
+                const jn = facts.joins[k];
+                if (!jn.over && jn.hop === undefined) jn.hop = 'mid';
+            }
+        };
         while (j < end && ts[j] !== undefined) {
             if (isPunct(j, ';') || isPunct(j, '^')) {
                 prev = null;
@@ -606,7 +712,11 @@ export function computeInline(
             if (isPunct(j, '=') || isPunct(j, '==') || isPunct(j, '=*') || isPunct(j, '*=')) {
                 const conn = ts[j];
                 if (conn.text === '=' || conn.text === '==') facts.equals.push(spanOf(conn));
+                const nextMarks = snap();
                 const next = parseElement(j + 1);
+                // Seal before any chain-level joins go in: the element's
+                // range must hold only what the element itself drew.
+                if (next !== null) seal(nextMarks);
                 if (prev !== null && next !== null) {
                     const over = conn.text === '==';
                     const from = over ? ts[prev.first] : ts[prev.last];
@@ -619,15 +729,41 @@ export function computeInline(
                             over,
                         });
                     }
+                    // A '==' hop: mark the dead-end element it bypasses, lay
+                    // wire-plus-top-line over it and plain wire on to the
+                    // next element, for the full-sugar drawing.
+                    if (over && prevMarks !== null) {
+                        markHop(prevMarks);
+                        const pl = ts[prev.first].line;
+                        const prevEnd = ts[prev.last].character
+                            + ts[prev.last].text.length;
+                        if (ts[prev.last].line === pl) {
+                            facts.joins.push({
+                                span: { line: pl, start: ts[prev.first].character,
+                                        end: prevEnd },
+                                over: false, hop: 'span',
+                            });
+                        }
+                        if (ts[prev.last].line === to.line && prevEnd < to.character) {
+                            facts.joins.push({
+                                span: { line: to.line, start: prevEnd,
+                                        end: to.character },
+                                over: false, hop: 'tail',
+                            });
+                        }
+                    }
                     prev = next;
+                    prevMarks = nextMarks;
                     j = next.last + 1;
                 } else {
                     prev = null;
+                    prevMarks = null;
                     j++;
                 }
                 continue;
             }
             const netsBefore = facts.nets.length;
+            const elMarks = snap();
             const el = parseElement(j);
             if (el !== null) {
                 // A net element just parsed learns which way its wire runs:
@@ -640,6 +776,7 @@ export function computeInline(
                     n.pos = arrived && continues ? 'mid' : continues ? 'start' : 'end';
                 }
                 prev = el;
+                prevMarks = seal(elMarks);
                 j = el.last + 1;
             } else {
                 j++;
@@ -667,6 +804,17 @@ export function computeInline(
     // net remembers its box's width so the client can pad the difference.
     const alignColumns = () => {
         facts.boxCol = Math.max(0, ...facts.headers.map((hd) => hd.width));
+        // A row aligns only when nothing but its connector stands between
+        // the cell and the net -- a row carrying a chain (a diode to ground,
+        // a cap on the way) keeps its own drawn layout.
+        const chainFree = (line: number, a: number, b: number): boolean => {
+            for (let k = 0; k < ts.length; k++) {
+                const t = ts[k];
+                if (t.line !== line || t.character < a || t.character >= b) continue;
+                if (!isPunct(k, '=') && !isPunct(k, '==')) return false;
+            }
+            return true;
+        };
         for (const p of facts.pins) {
             let best: (typeof facts.nets)[number] | undefined;
             for (const n of facts.nets) {
@@ -674,6 +822,7 @@ export function computeInline(
                 if (!best || n.span.start < best.span.start) best = n;
             }
             if (!best) continue;
+            if (!chainFree(p.span.line, p.span.end, best.span.start)) continue;
             best.boxWidth = p.width;
             if (best.span.start > p.span.end) {
                 facts.hides.push({ line: p.span.line, start: p.span.end,

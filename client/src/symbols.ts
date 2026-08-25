@@ -73,15 +73,19 @@ export function calibrationIcon(fontSize: number): vscode.Uri {
         `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
 }
 
-interface Canvas { h: number; cy: number; sw: number; ch: number; }
+interface Canvas { h: number; cy: number; sw: number; ch: number; ty: number; }
 export const kWire = 1.4;
 function canvasFor(fontSize: number): Canvas {
     const h = Math.round(fontSize * 1.8);
+    const cy = Math.round(h - fontSize * 0.30) - iconDrop(fontSize);
     return {
         h,
-        cy: Math.round(h - fontSize * 0.30) - iconDrop(fontSize),
+        cy,
         sw: kWire,
         ch: cellWidth(fontSize),
+        // Where a '==' bypass runs: level with the text overline that draws
+        // its continuation across un-iconed gaps.
+        ty: Math.max(1, cy - Math.round(fontSize * 0.62) - 2),
     };
 }
 
@@ -139,8 +143,8 @@ function symbolBody(kind: string, cx: number, cy: number, fontSize: number,
  */
 export function passiveFullIcon(kind: string, designator: string, value: string,
                                 fontSize: number, theme: SymbolTheme,
-                                mirror = false): vscode.Uri {
-    const { h, cy, sw, ch } = canvasFor(fontSize);
+                                mirror = false, hop = false): vscode.Uri {
+    const { h, cy, sw, ch, ty } = canvasFor(fontSize);
     const labelSize = Math.round(fontSize * 0.68);
     const labelW = Math.max(designator.length, value.length) * labelSize * 0.62;
     const entry = Math.round(1.2 * ch);
@@ -158,6 +162,14 @@ export function passiveFullIcon(kind: string, designator: string, value: string,
                                  labelSize, theme.label, designator);
     if (value) svg += textEl(labelX, cy + Math.round(fontSize * 0.45),
                              labelSize, theme.label, value);
+    if (hop) {
+        // The '==' bypass: a riser off the entry wire, then the top line
+        // running on over everything the element draws.
+        svg += `<line x1="1" y1="${cy}" x2="1" y2="${ty}" stroke="${theme.wire}" ` +
+            `stroke-width="${sw}"/>` +
+            `<line x1="1" y1="${ty}" x2="${w}" y2="${ty}" stroke="${theme.wire}" ` +
+            `stroke-width="${sw}"/>`;
+    }
     return svgUri(w, h, svg);
 }
 
@@ -166,8 +178,23 @@ export function passiveFullIcon(kind: string, designator: string, value: string,
 export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
                              fontSize: number, theme: SymbolTheme,
                              pos: 'start' | 'mid' | 'end' = 'end',
-                             leadCh = 0): vscode.Uri {
-    const { h, cy, sw, ch } = canvasFor(fontSize);
+                             leadCh = 0,
+                             hop?: 'mid' | 'end',
+                             spanCh = 0): vscode.Uri {
+    const { h, cy, sw, ch, ty } = canvasFor(fontSize);
+    // Inside a hopped element the bypass top line runs across; at the
+    // element's end it drops back down to wire height.
+    const finish = (w: number, svg: string): vscode.Uri => {
+        if (hop === undefined) return svgUri(w, h, svg);
+        const hw = hop === 'end' ? w + 4 : w;
+        let out = svg + `<line x1="0" y1="${ty}" x2="${hw - (hop === 'end' ? 1 : 0)}" ` +
+            `y2="${ty}" stroke="${theme.wire}" stroke-width="${sw}"/>`;
+        if (hop === 'end') {
+            out += `<line x1="${hw - 1}" y1="${ty}" x2="${hw - 1}" y2="${cy}" ` +
+                `stroke="${theme.wire}" stroke-width="${sw}"/>`;
+        }
+        return svgUri(hw, h, out);
+    };
     const labelSize = Math.round(fontSize * 0.7);
     const textW = Math.round(name.length * labelSize * 0.62) + 4;
     const lead = (x1: number, x2: number) =>
@@ -188,7 +215,7 @@ export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
             // the name stands beside it at wire height.
             const gx = pad + 6;
             const w = gx + 8 + textW;
-            return svgUri(w, h, lead(0, gx) + bars(gx)
+            return finish(w, lead(0, gx) + bars(gx)
                 + textEl(gx + 8 + textW / 2, cy, labelSize, theme.label, name));
         }
         // The wire leaves to the right: the name stands on the far side, the
@@ -198,24 +225,28 @@ export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
         let svg = bars(gx) + lead(gx, w)
             + textEl(textW / 2 + 2, cy, labelSize, theme.label, name);
         if (pos === 'mid') svg = lead(0, 4) + svg;
-        return svgUri(w, h, svg);
+        return finish(w, svg);
     }
 
-    const w = pad + Math.max(textW + 4, Math.round(1.5 * ch));
+    // A character-exact width keeps whatever follows on the line -- a pin
+    // box header, another element -- at its true column; the name squeezes
+    // into the span it stands in for.
+    const w = pad + (spanCh > 0 ? spanCh * ch
+                                : Math.max(textW + 4, Math.round(1.5 * ch)));
     let svg = lead(0, w);
     if (kind === 'rail') {
-        const ax = pad + 4;
+        const ax = pad + 3;
         const top = cy - Math.round(fontSize * 0.85);
         svg += `<line x1="${ax}" y1="${cy}" x2="${ax}" y2="${top + 3}" ${stroke}/>` +
             `<path d="M ${ax - 3} ${top + 4} L ${ax} ${top} L ${ax + 3} ${top + 4} Z" ` +
             `stroke="none" fill="${theme.stroke}"/>`;
-        svg += textEl(ax + 4 + (w - ax - 4) / 2, cy - Math.round(fontSize * 0.42),
-                      labelSize, theme.label, name);
+        svg += textEl(ax + 4 + (w - ax - 5) / 2, cy - Math.round(fontSize * 0.42),
+                      labelSize, theme.label, name, w - ax - 5);
     } else {
         svg += textEl(pad + (w - pad) / 2, cy - Math.round(fontSize * 0.42),
-                      labelSize, theme.label, name);
+                      labelSize, theme.label, name, w - pad - 2);
     }
-    return svgUri(w, h, svg);
+    return finish(w, svg);
 }
 
 /** An unrecognised part used inline: a small yellow box carrying its
@@ -247,13 +278,19 @@ export function partBoxIcon(label: string, entry: boolean, exit: boolean,
 
 /** A junction: a filled dot on its own piece of wire, so the line never
  *  breaks around it. */
-export function dotIcon(fontSize: number, theme: SymbolTheme): vscode.Uri {
-    const { h, cy, sw, ch } = canvasFor(fontSize);
+export function dotIcon(fontSize: number, theme: SymbolTheme,
+                        over = false): vscode.Uri {
+    const { h, cy, sw, ch, ty } = canvasFor(fontSize);
     const w = ch; // exactly the advance of the character it stands in for
-    return svgUri(w, h,
+    let svg =
         `<line x1="0" y1="${cy}" x2="${w}" y2="${cy}" stroke="${theme.wire}" ` +
         `stroke-width="${sw}"/>` +
-        `<circle cx="${w / 2}" cy="${cy}" r="2.2" fill="${theme.stroke}"/>`);
+        `<circle cx="${w / 2}" cy="${cy}" r="2.2" fill="${theme.stroke}"/>`;
+    if (over) {
+        svg += `<line x1="0" y1="${ty}" x2="${w}" y2="${ty}" stroke="${theme.wire}" ` +
+            `stroke-width="${sw}"/>`;
+    }
+    return svgUri(w, h, svg);
 }
 
 /** One cell of the yellow instance pin box: the header carries the
@@ -261,7 +298,7 @@ export function dotIcon(fontSize: number, theme: SymbolTheme): vscode.Uri {
 export type CellRole = 'header' | 'pin' | 'filler' | 'closer';
 export function pinCellIcon(label: string, widthCh: number, role: CellRole,
                             fontSize: number, theme: SymbolTheme,
-                            padCh = 0): vscode.Uri {
+                            padCh = 0, entryPin = ''): vscode.Uri {
     const header = role === 'header';
     const last = role === 'closer';
     const ch = cellWidth(fontSize);
@@ -293,12 +330,22 @@ export function pinCellIcon(label: string, widthCh: number, role: CellRole,
     }
     if (label) {
         const esc = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        // Pin names sit against the right edge, at the pin they name; the
-        // header stays flush left.
-        const tx = header ? pad + Math.round(0.6 * ch) : pad + boxW - Math.round(0.6 * ch);
+        // Pin names sit against the right edge, at the pin they name. The
+        // header stays flush left -- unless an entry pin takes that spot,
+        // in which case the part label moves to the right edge.
+        const right = !header || entryPin !== '';
+        const tx = right ? pad + boxW - Math.round(0.6 * ch)
+                         : pad + Math.round(0.6 * ch);
         svg += `<text x="${tx}" y="${cy}" font-family="monospace" ` +
             `font-size="${size}" fill="${header ? theme.boxStroke : theme.stroke}" ` +
-            `${header ? '' : 'text-anchor="end" '}dominant-baseline="central">${esc}</text>`;
+            `${right ? 'text-anchor="end" ' : ''}dominant-baseline="central">${esc}</text>`;
+    }
+    if (header && entryPin !== '') {
+        const esc = entryPin.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        svg += `<text x="${pad + Math.round(0.6 * ch)}" y="${cy}" ` +
+            `font-family="monospace" font-size="${Math.round(fontSize * 0.78)}" ` +
+            `fill="${theme.stroke}" dominant-baseline="central">${esc}</text>`;
     }
     if (stub > 0) {
         svg += `<line x1="${pad + boxW}" y1="${cy}" x2="${w}" y2="${cy}" ` +

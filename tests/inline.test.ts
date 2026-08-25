@@ -98,3 +98,88 @@ test('nothing after the end-of-content marker is analysed', () => {
     assert.equal(facts.devices.length, 0);
     assert.equal(facts.joins.length, 0);
 });
+
+test("a '==' hop marks the dead-end element for the bypass drawing", () => {
+    const src = 'block b { SW = K.{D2~D-SS34: .A = GND;} == BST; };';
+    const facts = computeInline(src, none);
+    const d = facts.devices[0];
+    assert.equal(d.kind, 'diode');
+    assert.equal(d.hop, true);      // carries riser and top line
+    assert.equal(d.mirror, true);   // entered at K
+    const gnd = facts.nets.find((n) => src.slice(n.span.start, n.span.end) === 'GND');
+    assert.equal(gnd?.hop, 'end');  // the bypass drops back down after it
+    const span = facts.joins.find((j) => j.hop === 'span');
+    const tail = facts.joins.find((j) => j.hop === 'tail');
+    assert.ok(span && src.slice(span.span.start, span.span.end).startsWith('K.{D2'));
+    assert.equal(src.slice(tail!.span.start, tail!.span.end), ' == ');
+});
+
+test('a plain join before a hop stays plain', () => {
+    const src = 'block b { SW = K.{D2~D-SS34: .A = GND;} == BST; };';
+    const facts = computeInline(src, none);
+    const first = facts.joins.find(
+        (j) => src.slice(j.span.start, j.span.end) === ' = '
+               && j.span.start === 12);
+    assert.ok(first);
+    assert.equal(first!.hop, undefined); // 'SW = ' runs at wire height
+});
+
+test('an entry-connected instance boxes with its pin on the header', () => {
+    const src = 'block b {\n'
+        + '    5V = VCC.{U7~SN74LV1T34:\n'
+        + '        .A = IN;\n'
+        + '        .GND = GND;\n'
+        + '    };\n};';
+    const facts = computeInline(src, none);
+    assert.equal(facts.headers.length, 1);
+    assert.equal(facts.headers[0].label, 'U7 SN74LV1T34');
+    assert.equal(facts.headers[0].entry, 'VCC');
+    // Rows sit left of the box column and pad right to it.
+    assert.equal(facts.pins.length, 2);
+    for (const p of facts.pins) assert.ok((p.pad ?? 0) > 0, 'pad set');
+    // The closer pads out to the box column too.
+    assert.equal(facts.closers.length, 1);
+    assert.ok((facts.closers[0].pad ?? 0) > 0);
+});
+
+test('a one-line instance with bindings draws as yellow chips', () => {
+    const src = 'block b { {J5~CONN-2P: .P[1] = OUT1; .P[2] = OUT2;}; };';
+    const facts = computeInline(src, none);
+    const labels = facts.parts.map((p) => p.label);
+    assert.deepEqual(labels, ['J5 CONN-2P', 'P[1]', 'P[2]']);
+    assert.equal(facts.parts[0].exit, false);
+    assert.equal(facts.parts[1].exit, true);
+});
+
+test('a multi-pin recognised device with an entry still boxes', () => {
+    const src = 'block b {\n'
+        + '    3V3 = A-COM.{D4~RGB-LED-CA:\n'
+        + '        .K-R = R-DRIVE;\n'
+        + '        .K-G = G-DRIVE;\n'
+        + '    };\n};';
+    const facts = computeInline(src, none);
+    assert.equal(facts.devices.length, 0); // the symbol yields to the box
+    assert.equal(facts.headers.length, 1);
+    assert.equal(facts.headers[0].entry, 'A-COM');
+});
+
+test('a diode exited at A draws mirrored', () => {
+    const facts = computeInline('block b { X = .{D1~D-SS34}.A = Y; };', none);
+    assert.equal(facts.devices[0].mirror, true);
+});
+
+test('a binding row carrying a chain keeps its own layout', () => {
+    const src = 'block b {\n'
+        + '    {U2~MP1584:\n'
+        + '        .VIN = VSYS;\n'
+        + '        .EN = .{R5~R-100kR-0603}. = VSYS;\n'
+        + '    };\n};';
+    const facts = computeInline(src, none);
+    const lines = src.split('\n');
+    const vsys = facts.nets.filter(
+        (n) => lines[n.span.line].slice(n.span.start, n.span.end) === 'VSYS');
+    assert.equal(vsys[0].boxWidth !== undefined, true);  // simple row aligns
+    assert.equal(vsys[1].boxWidth !== undefined, false); // chain row does not
+    // And nothing hid the resistor away.
+    assert.equal(facts.devices.some((d) => d.kind === 'resistor'), true);
+});

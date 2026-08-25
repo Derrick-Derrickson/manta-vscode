@@ -2,7 +2,7 @@
   "name": "manta-vscode",
   "displayName": "Manta",
   "description": "Language support for the Manta Schematic Definition Language: syntax highlighting, a parts browser, and hover documentation.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "GPL-3.0-or-later",
   "publisher": "manta",
   "engines": {
@@ -92,8 +92,12 @@
       },
       {
         "command": "manta.groupPartsBy",
-        "title": "Manta: Group Parts By\u2026",
+        "title": "Manta: Group Parts By…",
         "icon": "$(list-tree)"
+      },
+      {
+        "command": "manta.inline.toggle",
+        "title": "Manta: Toggle Inline Schematic"
       }
     ],
     "menus": {
@@ -149,15 +153,50 @@
           ],
           "default": "off",
           "description": "Trace the communication between VS Code and the manta language server."
+        },
+        "manta.inline.wires": {
+          "type": "boolean",
+          "default": true,
+          "description": "Draw faint wire lines along chains: under a '=' join, up and over the part a '==' continues past."
+        },
+        "manta.inline.symbols": {
+          "type": "boolean",
+          "default": true,
+          "description": "Collapse '~PART' references on resistors, capacitors, inductors and diodes to a symbol and value. The line under the cursor always shows the source as written."
+        },
+        "manta.inline.marks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a ground glyph next to ground nets and a rail glyph next to power rails."
         }
       }
-    }
+    },
+    "colors": [
+      {
+        "id": "manta.wire",
+        "description": "Inline schematic wire lines.",
+        "defaults": {
+          "light": "#3a6fd820",
+          "dark": "#6f9fff33",
+          "highContrast": "#6f9fff55"
+        }
+      },
+      {
+        "id": "manta.glyph",
+        "description": "Inline schematic symbols and net glyphs.",
+        "defaults": {
+          "light": "#3a6fd8b0",
+          "dark": "#6f9fffb0",
+          "highContrast": "#6f9fff"
+        }
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -p ./ -w",
     "test": "npm run compile && node --test \"out/tests/*.test.js\"",
-    "package": "npm run compile && vsce package --out manta-vscode-0.4.0.vsix",
+    "package": "npm run compile && vsce package --out manta-vscode-0.5.0.vsix",
     "vscode:prepublish": "npm run compile",
     "test:integration": "npm run compile && xvfb-run -a node out/tests/integration/runner.js",
     "test:all": "npm test && npm run test:integration"

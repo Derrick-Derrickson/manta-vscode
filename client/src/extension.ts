@@ -16,6 +16,7 @@ import {
 } from 'vscode-languageclient/node';
 
 import { PartsProvider } from './parts-view';
+import { InlineSchematic } from './inline-view';
 
 let client: LanguageClient | undefined;
 
@@ -56,6 +57,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<MantaA
 
     client = new LanguageClient('manta', 'Manta Language Server', serverOptions, clientOptions);
     await client.start();
+
+    const inline = new InlineSchematic(client);
+    context.subscriptions.push(inline);
+    context.subscriptions.push(
+        vscode.commands.registerCommand('manta.inline.toggle', async () => {
+            const config = vscode.workspace.getConfiguration('manta.inline');
+            const on = config.get<boolean>('wires', true) || config.get<boolean>('symbols', true)
+                || config.get<boolean>('marks', true);
+            for (const key of ['wires', 'symbols', 'marks']) {
+                await config.update(key, !on, vscode.ConfigurationTarget.Global);
+            }
+        }),
+    );
 
     const parts = new PartsProvider(client);
     const view = vscode.window.createTreeView('mantaParts', {

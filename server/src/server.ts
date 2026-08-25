@@ -28,6 +28,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from './uri';
 
 import { describe, summarise } from './describe';
+import { computeInline } from './inline';
 import { IndexStore, Located } from './index-store';
 import { Declaration, DeclKind, Range as ScanRange, scan } from './scanner';
 import { wordAt } from './word';
@@ -144,6 +145,17 @@ connection.onRequest('manta/parts', (): PartsEntry[] => {
         pinCount: declaration.pins.reduce((n, p) => n + p.count, 0),
         instantiations: store.instantiations(declaration.name),
     }));
+});
+
+connection.onRequest('manta/inline', ({ uri }: { uri: string }) => {
+    const document = documents.get(uri);
+    if (!document) return null;
+    return computeInline(document.getText(), (partName) => {
+        const found = store.lookup(partName, uri);
+        if (!found || found.declaration.kind !== 'part') return undefined;
+        const value = found.declaration.fields.find((f) => f.name === 'value');
+        return value?.value;
+    });
 });
 
 connection.onRequest('manta/describe', ({ name }: { name: string }): string | null => {

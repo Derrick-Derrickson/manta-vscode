@@ -20,12 +20,19 @@ export interface InlineSpan {
 }
 
 export interface InlineDevice {
-    /** The '~PART-NAME' span the editor may hide. */
+    /** The span the editor may hide: '~PART-NAME', or in the full form the
+     *  whole element ('.{R5~R-100kR-0603}.'). */
     hide: InlineSpan;
     /** What to draw in its place. */
     kind: 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'led';
     /** The value, when one is known: "10kR", "100nF". Empty otherwise. */
     value: string;
+    /** The designator: "R5". */
+    designator: string;
+    /** Set for a pure passthrough passive with no binding list: the whole
+     *  element ('.{R5~part}.'), which full-sugar mode may collapse into one
+     *  drawing carrying its own terminals, designator and value. */
+    fullSpan?: InlineSpan;
 }
 
 export interface InlineJoin {
@@ -49,6 +56,14 @@ export interface InlineFacts {
     marks: InlineMark[];
     /** Terminal dots -- '.' tokens standing on a wire -- drawn mid-height. */
     dots: InlineSpan[];
+    /** '='/'==' connector tokens, hidden entirely in full-sugar mode. */
+    equals: InlineSpan[];
+    /** Chain net references, redrawn as names standing on the wire. */
+    nets: { span: InlineSpan; kind: 'plain' | 'ground' | 'rail' }[];
+    /** '{DES~PART:' opens of instances drawn as a pin box. */
+    headers: { span: InlineSpan; width: number }[];
+    /** '.PIN' openers of bindings, drawn as the box's pin cells. */
+    pins: { span: InlineSpan; width: number; last: boolean }[];
 }
 
 /** R1 -> resistor, C? -> capacitor ... anything else -> undefined. */
@@ -81,7 +96,8 @@ export function computeInline(
     lookupValue: (partName: string) => string | undefined,
 ): InlineFacts {
     const { tokens, contentEnd } = tokenize(text);
-    const facts: InlineFacts = { devices: [], joins: [], marks: [], dots: [] };
+    const facts: InlineFacts = { devices: [], joins: [], marks: [], dots: [],
+                                 equals: [], nets: [], headers: [], pins: [] };
 
     // Meaningful tokens only, stopping at the end-of-content marker.
     const ts: Token[] = [];
@@ -164,9 +180,11 @@ export function computeInline(
         // Leading arrows on a net.
         while (isPunct(j, '>') || isPunct(j, '<') || isPunct(j, '<>') || isPunct(j, '>>')) j++;
 
+        let entryDots = 0;
+
         // Entry terminal: a dot run, or name/list attached through a dot.
         if (isPunct(j, '.')) {
-            while (isPunct(j, '.')) facts.dots.push(spanOf(ts[j++]));
+            while (isPunct(j, '.')) { facts.dots.push(spanOf(ts[j++])); entryDots++; }
             if (!isPunct(j, '{')) {
                 // Not a device: a binding's '.PIN' (pin of this instance) or
                 // its bare '.' casual pin -- an element in its own right.
@@ -192,21 +210,41 @@ export function computeInline(
         if (isPunct(j, '{')) {
             const close = matchClose(j, '{', '}');
             if (close < 0) return null;
-            handleDevice(j, close);
-            walkBindings(j + 1, close);
+            const bindings = hasBindingList(j, close);
+            const dev = handleDevice(j, close);
+            if (bindings) {
+                if (dev < 0) recordBox(j, close);
+                walkBindings(j + 1, close);
+            }
             j = close + 1;
             // Exit terminal: '.', '.NAME', '.[list]', or a dot run.
+            let exitDots = 0;
+            let exitNamed = false;
             if (isPunct(j, '.')) {
                 facts.dots.push(spanOf(ts[j]));
+                exitDots++;
                 j++;
                 if (isWord(j)) {
+                    exitNamed = true;
                     j++;
                     if (isPunct(j, '[')) j = matchClose(j - 0, '[', ']') + 1;
                 } else if (isPunct(j, '[')) {
+                    exitNamed = true;
                     j = matchClose(j, '[', ']') + 1;
                 } else {
-                    while (isPunct(j, '.')) facts.dots.push(spanOf(ts[j++]));
+                    while (isPunct(j, '.')) { facts.dots.push(spanOf(ts[j++])); exitDots++; }
                 }
+            }
+            // A pure passthrough passive -- '.{R5~part}.' on one line, no
+            // binding list -- collapses whole: the drawing carries its own
+            // terminals, designator and value.
+            if (dev >= 0 && !bindings && entryDots === 1 && exitDots === 1 && !exitNamed
+                && ts[first].line === ts[j - 1].line && first === i) {
+                facts.devices[dev].fullSpan = {
+                    line: ts[first].line,
+                    start: ts[first].character,
+                    end: ts[j - 1].character + ts[j - 1].text.length,
+                };
             }
             return { first, last: j - 1 };
         }
@@ -229,6 +267,7 @@ export function computeInline(
 
         if (isWord(j)) {
             markNet(ts[j]);
+            const nameFirst = j;
             j++;
             // A dotted path ('U1.GPIO1', 'i2c.SDA') or an index.
             while (isPunct(j, '.') && isWord(j + 1)) {
@@ -238,6 +277,14 @@ export function computeInline(
             if (isPunct(j, '[')) {
                 const close = matchClose(j, '[', ']');
                 if (close >= 0) j = close + 1;
+            }
+            if (ts[nameFirst].line === ts[j - 1].line) {
+                const name = ts[nameFirst].text;
+                facts.nets.push({
+                    span: { line: ts[nameFirst].line, start: ts[nameFirst].character,
+                            end: ts[j - 1].character + ts[j - 1].text.length },
+                    kind: isGroundName(name) ? 'ground' : isRailName(name) ? 'rail' : 'plain',
+                });
             }
             // Trailing arrows.
             while (isPunct(j, '>') || isPunct(j, '<') || isPunct(j, '<>') || isPunct(j, '>>')) j++;
@@ -251,29 +298,114 @@ export function computeInline(
         else if (isRailName(t.text)) facts.marks.push({ span: spanOf(t), kind: 'rail' });
     };
 
-    // The '{DES~PART' inside a device: record the collapsible '~PART' span.
-    const handleDevice = (open: number, close: number) => {
+    // The '{DES~PART' inside a device. Returns the pushed device index, or
+    // -1 when the instance is not a drawable passive.
+    const handleDevice = (open: number, close: number): number => {
         let j = open + 1;
         if (isPunct(j, '!')) j++;
-        if (!isWord(j)) return;
+        if (!isWord(j)) return -1;
         let designator = ts[j].text;
         j++;
         if (isPunct(j, '?')) {
             designator += '?';
             j++;
         }
-        if (!isPunct(j, '~') || !isWord(j + 1) || j + 1 >= close) return;
+        if (!isPunct(j, '~') || !isWord(j + 1) || j + 1 >= close) return -1;
         const partName = ts[j + 1].text;
         const kind = kindOf(designator, partName);
-        if (!kind) return;
-        if (ts[j].line !== ts[j + 1].line) return;
+        if (!kind) return -1;
+        if (ts[j].line !== ts[j + 1].line) return -1;
         const value = lookupValue(partName) ?? valueFromPartName(partName) ?? '';
         facts.devices.push({
             hide: { line: ts[j].line, start: ts[j].character,
                     end: ts[j + 1].character + ts[j + 1].text.length },
             kind,
             value,
+            designator,
         });
+        return facts.devices.length - 1;
+    };
+
+    // A non-passive instance with a binding list draws as a pin box: a
+    // header cell for '{DES~PART:' and one yellow cell per '.PIN' opener,
+    // all of one width so the column reads as a single body.
+    const recordBox = (open: number, close: number) => {
+        // The ':' that opens the binding list, at this brace's own depth.
+        let colon = -1;
+        let depth = 0;
+        for (let k = open + 1; k < close; k++) {
+            if (isPunct(k, '{')) depth++;
+            else if (isPunct(k, '}')) depth--;
+            else if (depth === 0 && isPunct(k, ':')) { colon = k; break; }
+        }
+        if (colon < 0 || ts[open].line !== ts[colon].line) return;
+
+        // Pin openers: a '.' directly after the ':' or a top-level ';'.
+        interface Cell { first: number; last: number; name: string; }
+        const cells: Cell[] = [];
+        depth = 0;
+        let atStart = true;
+        for (let k = colon + 1; k < close; k++) {
+            if (isPunct(k, '{')) { depth++; atStart = false; continue; }
+            if (isPunct(k, '}')) { depth--; atStart = false; continue; }
+            if (depth > 0) continue;
+            if (isPunct(k, ';')) { atStart = true; continue; }
+            if (atStart && isPunct(k, '.')) {
+                let e = k;
+                let name = '';
+                if (isWord(k + 1)) {
+                    e = k + 1;
+                    name = ts[e].text;
+                    if (isPunct(e + 1, '[')) {
+                        const rb = matchClose(e + 1, '[', ']');
+                        if (rb >= 0 && ts[rb].line === ts[k].line) {
+                            name += ts.slice(e + 1, rb + 1).map((t) => t.text).join('');
+                            e = rb;
+                        }
+                    }
+                }
+                if (ts[k].line === ts[e].line) cells.push({ first: k, last: e, name });
+            }
+            atStart = false;
+        }
+        if (cells.length === 0) return;
+
+        // The box only works as a column: the header opens its line and every
+        // pin opens its own. Each cell then swallows its indent back to the
+        // header's column, so the drawn edges align.
+        const firstOnLine = (k: number) =>
+            k === 0 || ts[k - 1].line !== ts[k].line;
+        if (!firstOnLine(open)) return;
+        if (!cells.every((c) => firstOnLine(c.first)
+                                && ts[c.first].character >= ts[open].character)) return;
+
+        const headerLen = ts[colon].character + 1 - ts[open].character;
+        const width = Math.max(headerLen - 2,
+                               ...cells.map((c) => c.name.length + 2));
+        facts.headers.push({
+            span: { line: ts[open].line, start: ts[open].character,
+                    end: ts[colon].character + 1 },
+            width,
+        });
+        for (const c of cells) {
+            facts.pins.push({
+                span: { line: ts[c.first].line, start: ts[open].character,
+                        end: ts[c.last].character + ts[c.last].text.length },
+                width,
+                last: c === cells[cells.length - 1],
+            });
+        }
+    };
+
+    // Whether an instance carries a binding list: a ':' at its own depth.
+    const hasBindingList = (open: number, close: number): boolean => {
+        let depth = 0;
+        for (let j = open + 1; j < close; j++) {
+            if (isPunct(j, '{')) depth++;
+            else if (isPunct(j, '}')) depth--;
+            else if (depth === 0 && isPunct(j, ':')) return true;
+        }
+        return false;
     };
 
     const KEYWORDS = new Set(['block', 'part', 'harness', 'netclass', 'match',
@@ -309,6 +441,7 @@ export function computeInline(
             }
             if (isPunct(j, '=') || isPunct(j, '==') || isPunct(j, '=*') || isPunct(j, '*=')) {
                 const conn = ts[j];
+                if (conn.text === '=' || conn.text === '==') facts.equals.push(spanOf(conn));
                 const next = parseElement(j + 1);
                 if (prev !== null && next !== null) {
                     const over = conn.text === '==';

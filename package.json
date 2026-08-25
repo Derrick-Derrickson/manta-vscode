@@ -168,6 +168,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show a ground glyph next to ground nets and a rail glyph next to power rails."
+        },
+        "manta.inline.full": {
+          "type": "boolean",
+          "default": true,
+          "description": "Full sugar: hide the connector tokens and draw pure wire lines, collapse passthrough passives entirely (designator above the exit wire, value below), redraw net names standing on the wire with drawn ground drops and rail marks, and render instance binding lists as a yellow pin box."
         }
       }
     },

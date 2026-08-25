@@ -30,6 +30,15 @@ The editor draws what a chain means, in place, without touching the text:
   `⏚`; power rails (`&RAIL`, `&CLASS=power`, or a rail-shaped name such as
   `3V3` or `VBAT`) carry `↥`.
 
+**Full sugar** (`manta.inline.full`, on by default) goes further: connector
+tokens vanish and pure wire lines run between terminals; a passthrough passive
+collapses entirely — entry wire, drawn part, exit wire with the designator
+above the line and the value below it; net names are re-drawn standing on the
+wire, grounds as a drop to a drawn ground symbol with the net name beside it,
+rails as an up-arrow with the name above the line; and an instance's binding
+list renders as a yellow pin box down the left, one cell per pin, wire stubs
+out to their nets.
+
 Everything is a decoration — the file is untouched, and the drawing follows
 the editor's font size and light/dark theme. The extension sets
 `editor.lineHeight` to 1.9 for manta files (a language-scoped default you can

@@ -13,14 +13,21 @@ export interface SymbolTheme {
     stroke: string;
     /** The short wire leads either side, matching the wire lines. */
     wire: string;
+    /** Softer ink for values and net names. */
+    label: string;
+    /** The instance pin box. */
+    boxFill: string;
+    boxStroke: string;
 }
 
 export function themeFor(kind: vscode.ColorThemeKind): SymbolTheme {
     const dark = kind === vscode.ColorThemeKind.Dark
         || kind === vscode.ColorThemeKind.HighContrast;
     return dark
-        ? { stroke: '#9db8f0', wire: '#6f9fff96' }
-        : { stroke: '#2f54ad', wire: '#3a6fd896' };
+        ? { stroke: '#9db8f0', wire: '#6f9fff96', label: '#9db8f0c8',
+            boxFill: '#d4b10620', boxStroke: '#d9b40cb0' }
+        : { stroke: '#2f54ad', wire: '#3a6fd896', label: '#2f54adc8',
+            boxFill: '#b5890014', boxStroke: '#8a6d03b0' };
 }
 
 /** Monospace advance for the editor font size; VS Code's default families
@@ -64,6 +71,173 @@ export function calibrationIcon(fontSize: number): vscode.Uri {
         `viewBox="0 0 ${w} ${h}">${body}</svg>`;
     return vscode.Uri.parse(
         `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
+}
+
+interface Canvas { h: number; cy: number; sw: number; ch: number; }
+function canvasFor(fontSize: number): Canvas {
+    const h = Math.round(fontSize * 1.8);
+    return {
+        h,
+        cy: Math.round(h - fontSize * 0.30) - iconDrop(fontSize),
+        sw: Math.max(1.2, fontSize / 12),
+        ch: cellWidth(fontSize),
+    };
+}
+
+/** The bare symbol body, drawn about (cx, cy); returns its half-width. */
+function symbolBody(kind: string, cx: number, cy: number, fontSize: number,
+                    theme: SymbolTheme, sw: number): { body: string; halfW: number } {
+    const stroke = `stroke="${theme.stroke}" stroke-width="${sw}" fill="none"`;
+    const ch = cellWidth(fontSize);
+    switch (kind) {
+        case 'resistor': {
+            const bw = Math.round(4.2 * ch);
+            const bh = Math.round(fontSize * 0.75);
+            return { halfW: bw / 2, body:
+                `<rect x="${cx - bw / 2}" y="${cy - bh / 2}" width="${bw}" ` +
+                `height="${bh}" rx="1.5" ${stroke}/>` };
+        }
+        case 'inductor': {
+            const humps = 4;
+            const rr = Math.round(2.1 * ch) / humps;
+            const rise = Math.min(rr * 1.6, fontSize * 0.7);
+            let d = `M ${cx - rr * humps} ${cy}`;
+            for (let k = 0; k < humps; k++) d += ` a ${rr} ${rise} 0 0 1 ${2 * rr} 0`;
+            return { halfW: rr * humps, body: `<path d="${d}" ${stroke}/>` };
+        }
+        case 'capacitor': {
+            const gap = Math.max(4, Math.round(ch * 0.5));
+            const up = Math.round(fontSize * 0.55);
+            return { halfW: gap / 2 + sw, body:
+                `<line x1="${cx - gap / 2}" y1="${cy - up}" x2="${cx - gap / 2}" y2="${cy + up}" ${stroke}/>` +
+                `<line x1="${cx + gap / 2}" y1="${cy - up}" x2="${cx + gap / 2}" y2="${cy + up}" ${stroke}/>` };
+        }
+        default: {  // diode / led
+            const half = Math.round(fontSize * 0.42);
+            const triW = Math.round(1.2 * ch);
+            const x0 = cx - triW / 2;
+            const x1 = cx + triW / 2;
+            let body =
+                `<path d="M ${x0} ${cy - half} L ${x1} ${cy} L ${x0} ${cy + half} Z" ` +
+                `stroke="${theme.stroke}" stroke-width="${sw}" fill="${theme.stroke}"/>` +
+                `<line x1="${x1}" y1="${cy - half}" x2="${x1}" y2="${cy + half}" ${stroke}/>`;
+            if (kind === 'led') {
+                body += `<path d="M ${x0 + 2} ${cy - half - 1} l 3 -3 m -3 0 l 3 0 l 0 3" ` +
+                    `${stroke} transform="rotate(-15 ${x0 + 2} ${cy - half - 1})"/>`;
+            }
+            return { halfW: triW / 2 + sw, body };
+        }
+    }
+}
+
+/**
+ * The fully collapsed passive: entry lead, symbol, exit lead carrying the
+ * designator above the line and the value below it.
+ */
+export function passiveFullIcon(kind: string, designator: string, value: string,
+                                fontSize: number, theme: SymbolTheme): vscode.Uri {
+    const { h, cy, sw, ch } = canvasFor(fontSize);
+    const labelSize = Math.round(fontSize * 0.68);
+    const labelW = Math.max(designator.length, value.length) * labelSize * 0.62;
+    const entry = Math.round(1.2 * ch);
+    const symHalf = symbolBody(kind, 0, 0, fontSize, theme, sw).halfW;
+    const cx = entry + symHalf;
+    const exitW = Math.max(Math.round(2.5 * ch), Math.round(labelW + ch));
+    const w = Math.round(cx + symHalf + exitW);
+    const { body } = symbolBody(kind, cx, cy, fontSize, theme, sw);
+    const lead = (x1: number, x2: number) =>
+        `<line x1="${x1}" y1="${cy}" x2="${x2}" y2="${cy}" stroke="${theme.wire}" ` +
+        `stroke-width="${sw}"/>`;
+    const labelX = cx + symHalf + exitW / 2;
+    let svg = lead(0, cx - symHalf) + lead(cx + symHalf, w) + body;
+    if (designator) svg += textEl(labelX, cy - Math.round(fontSize * 0.42),
+                                 labelSize, theme.label, designator);
+    if (value) svg += textEl(labelX, cy + Math.round(fontSize * 0.45),
+                             labelSize, theme.label, value);
+    return svgUri(w, h, svg);
+}
+
+/** A chain net reference re-drawn on the wire: the name above the line, a
+ *  ground drop below it, or a rail tick, per kind. */
+export function netLabelIcon(name: string, kind: 'plain' | 'ground' | 'rail',
+                             fontSize: number, theme: SymbolTheme): vscode.Uri {
+    const { h, cy, sw, ch } = canvasFor(fontSize);
+    const labelSize = Math.round(fontSize * 0.7);
+    const textW = Math.round(name.length * labelSize * 0.62) + 4;
+    const lead = (x1: number, x2: number) =>
+        `<line x1="${x1}" y1="${cy}" x2="${x2}" y2="${cy}" stroke="${theme.wire}" ` +
+        `stroke-width="${sw}"/>`;
+    const stroke = `stroke="${theme.stroke}" stroke-width="${sw}" fill="none"`;
+
+    if (kind === 'ground') {
+        // The wire dives to a ground symbol; the name stands beside it.
+        const gx = Math.round(1.1 * ch);
+        const w = gx + 6 + textW;
+        const y0 = cy + Math.round(fontSize * 0.16);
+        let svg = lead(0, gx) +
+            `<line x1="${gx}" y1="${cy}" x2="${gx}" y2="${y0}" ${stroke}/>` +
+            `<line x1="${gx - 5}" y1="${y0}" x2="${gx + 5}" y2="${y0}" ${stroke}/>` +
+            `<line x1="${gx - 3}" y1="${y0 + 3}" x2="${gx + 3}" y2="${y0 + 3}" ${stroke}/>` +
+            `<line x1="${gx - 1}" y1="${y0 + 6}" x2="${gx + 1}" y2="${y0 + 6}" ${stroke}/>`;
+        svg += textEl(gx + 6 + textW / 2, cy + Math.round(fontSize * 0.25),
+                      labelSize, theme.label, name);
+        return svgUri(w, h, svg);
+    }
+
+    const w = Math.max(textW + 4, Math.round(1.5 * ch));
+    let svg = lead(0, w);
+    if (kind === 'rail') {
+        const ax = 4;
+        const top = cy - Math.round(fontSize * 0.85);
+        svg += `<line x1="${ax}" y1="${cy}" x2="${ax}" y2="${top + 3}" ${stroke}/>` +
+            `<path d="M ${ax - 3} ${top + 4} L ${ax} ${top} L ${ax + 3} ${top + 4} Z" ` +
+            `stroke="none" fill="${theme.stroke}"/>`;
+        svg += textEl(ax + 4 + (w - ax - 4) / 2, cy - Math.round(fontSize * 0.42),
+                      labelSize, theme.label, name);
+    } else {
+        svg += textEl(w / 2, cy - Math.round(fontSize * 0.42), labelSize, theme.label, name);
+    }
+    return svgUri(w, h, svg);
+}
+
+/** One cell of the yellow instance pin box: the header carries the
+ *  designator and part, each pin row its pin name and a wire stub. */
+export function pinCellIcon(label: string, widthCh: number, header: boolean,
+                            fontSize: number, theme: SymbolTheme,
+                            last = false): vscode.Uri {
+    const ch = cellWidth(fontSize);
+    // Two pixels past the line pitch, so stacked cells touch and the column
+    // reads as one body.
+    const h = Math.round(fontSize * 1.9) + 2;
+    const cy = Math.round(h - fontSize * 0.30) - iconDrop(fontSize) - 2;
+    const sw = Math.max(1.2, fontSize / 12);
+    const boxW = Math.round(widthCh * ch);
+    const stub = header ? 0 : Math.round(1.2 * ch);
+    const w = boxW + stub;
+    const size = Math.round(fontSize * (header ? 0.72 : 0.78));
+    let svg = `<rect x="${sw / 2}" y="0" width="${boxW - sw}" height="${h}" ` +
+        `fill="${theme.boxFill}" stroke="none"/>` +
+        `<line x1="${sw / 2}" y1="0" x2="${sw / 2}" y2="${h}" ` +
+        `stroke="${theme.boxStroke}" stroke-width="${sw}"/>` +
+        `<line x1="${boxW - sw / 2}" y1="0" x2="${boxW - sw / 2}" y2="${h}" ` +
+        `stroke="${theme.boxStroke}" stroke-width="${sw}"/>`;
+    if (header) {
+        svg += `<line x1="${sw / 2}" y1="${sw / 2}" x2="${boxW - sw / 2}" y2="${sw / 2}" ` +
+            `stroke="${theme.boxStroke}" stroke-width="${sw}"/>`;
+    }
+    if (last) {
+        svg += `<line x1="${sw / 2}" y1="${h - sw / 2}" x2="${boxW - sw / 2}" y2="${h - sw / 2}" ` +
+            `stroke="${theme.boxStroke}" stroke-width="${sw}"/>`;
+    }
+    const esc = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    svg += `<text x="${Math.round(0.6 * ch)}" y="${cy}" font-family="monospace" ` +
+        `font-size="${size}" fill="${header ? theme.boxStroke : theme.stroke}" ` +
+        `dominant-baseline="central">${esc}</text>`;
+    if (stub > 0) {
+        svg += `<line x1="${boxW}" y1="${cy}" x2="${w}" y2="${cy}" ` +
+            `stroke="${theme.wire}" stroke-width="${sw}"/>`;
+    }
+    return svgUri(w, h, svg);
 }
 
 /**

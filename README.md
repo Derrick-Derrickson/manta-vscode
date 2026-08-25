@@ -31,7 +31,10 @@ The editor draws what a chain means, in place, without touching the text:
   `3V3` or `VBAT`) carry `↥`.
 
 Everything is a decoration — the file is untouched, and the drawing follows
-the editor's font size and light/dark theme. Toggle with **Manta: Toggle
+the editor's font size and light/dark theme. The extension sets
+`editor.lineHeight` to 1.9 for manta files (a language-scoped default you can
+override) so the drawn parts have head-room; the symbol geometry is calibrated
+to that height. Toggle with **Manta: Toggle
 Inline Schematic**, or per-layer via `manta.inline.wires`,
 `manta.inline.symbols` and `manta.inline.marks`.
 

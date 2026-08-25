@@ -27,6 +27,10 @@ export function themeFor(kind: vscode.ColorThemeKind): SymbolTheme {
  *  all land close to 0.6em. */
 export const cellWidth = (fontSize: number) => Math.round(fontSize * 0.6);
 
+/** How far the icon is lowered below the baseline (vertical-align), so the
+ *  wire crosses the canvas near its middle instead of its bottom. */
+export const iconDrop = (fontSize: number) => Math.round(fontSize * 0.47);
+
 function svgUri(width: number, height: number, body: string): vscode.Uri {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" ` +
         `height="${height}" viewBox="0 0 ${width} ${height}">${body}</svg>`;
@@ -48,7 +52,7 @@ function textEl(x: number, y: number, size: number, fill: string, text: string,
  *  yellow 8, cyan 12, white 16 (repeating). */
 export function calibrationIcon(fontSize: number): vscode.Uri {
     const w = Math.round(fontSize * 4);
-    const h = Math.round(fontSize * 1.45);
+    const h = Math.round(fontSize * 1.8);
     const colors = ['#ff3333', '#33cc33', '#dddd22', '#22cccc', '#ffffff'];
     let body = `<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" ` +
         `stroke="#ff00ff" stroke-width="1" fill="none"/>`;
@@ -69,19 +73,19 @@ export function calibrationIcon(fontSize: number): vscode.Uri {
 export function deviceIcon(kind: string, value: string, fontSize: number,
                            theme: SymbolTheme): { uri: vscode.Uri; } {
     const ch = cellWidth(fontSize);
-    // Calibrated against a real render: the image is bottom-anchored, the
-    // wire strike-through runs 0.367 em above the image bottom, and anything
-    // taller than the line box collides with the neighbouring lines -- so the
-    // canvas is capped at 1.45 em and symbols grow upward from the wire.
-    const h = Math.round(fontSize * 1.45);
-    const cy = Math.round(h - fontSize * 0.367);
-    const down = Math.max(3, Math.round(fontSize * 0.3));   // room below the wire
+    // Calibrated against a real render at the 1.9 line height this extension
+    // sets for manta files: the image is bottom-anchored with the wire
+    // strike-through 0.30 em above its bottom, and the whole image is dropped
+    // by iconDrop() (vertical-align) so the wire crosses mid-canvas and
+    // symbols can centre on it like parts on a schematic.
+    const h = Math.round(fontSize * 1.8);
+    const cy = Math.round(h - fontSize * 0.30) - iconDrop(fontSize);
     const sw = Math.max(1.2, fontSize / 12);
     const stroke = `stroke="${theme.stroke}" stroke-width="${sw}" fill="none"`;
     const lead = (x1: number, x2: number) =>
         `<line x1="${x1}" y1="${cy}" x2="${x2}" y2="${cy}" stroke="${theme.wire}" ` +
         `stroke-width="${sw}"/>`;
-    const valueSize = Math.round(fontSize * 0.78);
+    const valueSize = Math.round(fontSize * 0.8);
 
     switch (kind) {
         case 'resistor': {
@@ -89,13 +93,12 @@ export function deviceIcon(kind: string, value: string, fontSize: number,
             const w = 5 * ch;
             const boxX = Math.round(0.4 * ch);
             const boxW = w - 2 * boxX;
-            const boxH = Math.round(fontSize * 0.86);
-            const boxY = cy + down - boxH;
+            const boxH = Math.round(fontSize * 1.1);
+            const boxY = cy - boxH / 2;
             const body = lead(0, boxX) + lead(w - boxX, w) +
                 `<rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" ` +
                 `rx="1.5" ${stroke}/>` +
-                (value ? textEl(w / 2, cy + down - boxH / 2, valueSize, theme.stroke,
-                                value, boxW - 4) : '');
+                (value ? textEl(w / 2, cy, valueSize, theme.stroke, value, boxW - 4) : '');
             return { uri: svgUri(w, h, body) };
         }
         case 'inductor': {
@@ -105,14 +108,13 @@ export function deviceIcon(kind: string, value: string, fontSize: number,
             const x0 = Math.round(0.4 * ch);
             const r = coilW / (2 * humps);
             let d = `M ${x0} ${cy}`;
-            const rise = Math.min(r * 1.5, fontSize * 0.6);
+            const rise = Math.min(r * 1.6, fontSize * 0.75);
             for (let k = 0; k < humps; k++) d += ` a ${r} ${rise} 0 0 1 ${2 * r} 0`;
             const textW = value ? Math.round(value.length * valueSize * 0.62) + 4 : 0;
             const w = 5 * ch + textW;
             const body = lead(0, x0) + lead(x0 + coilW, 5 * ch) +
                 `<path d="${d}" ${stroke}/>` +
-                (value ? textEl(5 * ch + textW / 2, cy - Math.round(fontSize * 0.15),
-                            valueSize, theme.stroke, value) : '');
+                (value ? textEl(5 * ch + textW / 2, cy, valueSize, theme.stroke, value) : '');
             return { uri: svgUri(w, h, body) };
         }
         case 'capacitor': {
@@ -121,15 +123,14 @@ export function deviceIcon(kind: string, value: string, fontSize: number,
             const gap = Math.max(4, Math.round(ch * 0.5));
             const p1 = symW / 2 - gap / 2;
             const p2 = symW / 2 + gap / 2;
-            const plateUp = Math.round(fontSize * 0.5);
-            const plateDown = down;
+            const plateUp = Math.round(fontSize * 0.55);
+            const plateDown = Math.round(fontSize * 0.55);
             const textW = value ? Math.round(value.length * valueSize * 0.62) + 4 : 0;
             const w = symW + textW;
             const body = lead(0, p1) + lead(p2, symW) +
                 `<line x1="${p1}" y1="${cy - plateUp}" x2="${p1}" y2="${cy + plateDown}" ${stroke}/>` +
                 `<line x1="${p2}" y1="${cy - plateUp}" x2="${p2}" y2="${cy + plateDown}" ${stroke}/>` +
-                (value ? textEl(symW + textW / 2, cy - Math.round(fontSize * 0.15),
-                                valueSize, theme.stroke, value) : '');
+                (value ? textEl(symW + textW / 2, cy, valueSize, theme.stroke, value) : '');
             return { uri: svgUri(w, h, body) };
         }
         case 'diode':
@@ -138,7 +139,7 @@ export function deviceIcon(kind: string, value: string, fontSize: number,
             const triW = Math.round(1.2 * ch);
             const x0 = symW / 2 - triW / 2;
             const x1 = symW / 2 + triW / 2;
-            const half = down;
+            const half = Math.round(fontSize * 0.42);
             const textW = value ? Math.round(value.length * valueSize * 0.62) + 4 : 0;
             const w = symW + textW;
             let body = lead(0, x0) + lead(x1, symW) +
@@ -150,8 +151,7 @@ export function deviceIcon(kind: string, value: string, fontSize: number,
                 body += `<path d="M ${ax} ${cy - half - 1} l 3 -3 m -3 0 l 3 0 m 0 0 l 0 3" ` +
                     `${stroke} transform="rotate(-15 ${ax} ${cy - half - 1})"/>`;
             }
-            if (value) body += textEl(symW + textW / 2, cy - Math.round(fontSize * 0.15),
-                                      valueSize, theme.stroke, value);
+            if (value) body += textEl(symW + textW / 2, cy, valueSize, theme.stroke, value);
             return { uri: svgUri(w, h, body) };
         }
         default: {

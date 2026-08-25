@@ -28,7 +28,7 @@ export async function run(): Promise<void> {
     const editor = await vscode.window.showTextDocument(doc);
     // Park the cursor on line 0 so nothing else is revealed as source.
     editor.selection = new vscode.Selection(0, 0, 0, 0);
-    editor.revealRange(new vscode.Range(10, 0, doc.lineCount - 1, 0));
+    editor.revealRange(new vscode.Range(doc.lineCount - 1, 0, doc.lineCount - 1, 0));
 
     // The language server needs to start, index and answer manta/inline.
     await sleep(9000);
